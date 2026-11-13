@@ -1,0 +1,38 @@
+name: Hide old laptop posts
+# Runs a few minutes after each time the old laptop agent's booked posts go out (Nairobi 05:30, 09:25, 13:15, 17:10, 21:00)
+on:
+  schedule:
+    - cron: '33 2 * * *'
+    - cron: '18 10 * * *'
+    - cron: '13 14 * * *'
+    - cron: '3 18 * * *'
+  workflow_dispatch:
+concurrency: { group: agent, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  hide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private store
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          for p in data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; do rm -rf "$p"; ln -s "$PWD/vault/$p" "$p"; done
+          mkdir -p vault/data/logs
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Hide any that have gone out
+        run: |
+          [ -f data/makasa/old_scheduled.json ] && ACTION=hide_old PAGE=makasa node agent/manage.js || true
+          [ -f data/timsauti/old_scheduled.json ] && ACTION=hide_old PAGE=timsauti node agent/manage.js || true
+        env:
+          TIMSAUTI_PAGE_TOKEN: ${{ secrets.TIMSAUTI_PAGE_TOKEN }}
+          MAKASA_PAGE_TOKEN: ${{ secrets.MAKASA_PAGE_TOKEN }}
+      - name: Save records
+        run: |
+          cd vault
+          git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
+          git add -A data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; git diff --cached --quiet || (git commit -q -m "Hid old laptop posts" && git pull -q --rebase && git push)

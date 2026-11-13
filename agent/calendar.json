@@ -1,0 +1,61 @@
+{
+  "fixed": {
+    "01-01": "New Year's Day (public holiday): fresh starts, planning the year",
+    "02-14": "Valentine's Day: appreciation, loyal customers, family",
+    "03-08": "International Women's Day: women in business and leadership",
+    "05-01": "Labour Day (public holiday): honest work and workers",
+    "06-01": "Madaraka Day (public holiday): self rule, ownership, building our own",
+    "10-10": "Mashujaa season and Utamaduni Day (public holiday): culture and heritage",
+    "10-20": "Mashujaa Day (public holiday): heroes, sacrifice, service",
+    "12-12": "Jamhuri Day (public holiday): the republic, unity, progress",
+    "12-25": "Christmas Day (public holiday): the birth of Christ, family, giving",
+    "12-26": "Boxing Day (public holiday): family time, rest, generosity"
+  },
+  "seasons": [
+    {
+      "from": "01-02",
+      "to": "01-10",
+      "note": "schools reopening for term one: parents, budgets, fresh routines"
+    },
+    {
+      "from": "04-24",
+      "to": "05-03",
+      "note": "schools reopening for term two"
+    },
+    {
+      "from": "08-24",
+      "to": "09-02",
+      "note": "schools reopening for term three"
+    },
+    {
+      "from": "10-28",
+      "to": "11-25",
+      "note": "national examination season (KCSE, KJSEA and KPSEA candidates): encouragement for candidates and parents"
+    },
+    {
+      "from": "12-01",
+      "to": "12-24",
+      "note": "festive season: end of year sales, planning for January, travel upcountry"
+    }
+  ],
+  "weekday": {
+    "timsauti": {
+      "0": "Sunday: light and reflective, short and easy to read",
+      "1": "Monday: practical tips business owners can apply this week",
+      "3": "Wednesday: midweek check, one thing to fix in your marketing",
+      "5": "Friday: weekend customers, events and planning for next week"
+    },
+    "makasa": {
+      "0": "Sunday: worship, rest and faith",
+      "1": "Monday: work, discipline and a strong start to the week",
+      "5": "Friday: family, gratitude and finishing the week well"
+    },
+    "sauti": {
+      "0": "Sunday: a day of worship, church and family; keep the tone respectful, uplifting and faith friendly",
+      "1": "Monday: a new working week, hustle and fresh starts",
+      "3": "Wednesday: midweek",
+      "5": "Friday: end of the working week, weekend plans, funerals, weddings and home visits upcountry",
+      "6": "Saturday: community events, weddings, funerals, sports and market day"
+    }
+  }
+}

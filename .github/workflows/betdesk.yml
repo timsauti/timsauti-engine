@@ -1,0 +1,71 @@
+name: Sports desk
+# Football picks report to Telegram every day at 11:17 Nairobi time (08:17 UTC), just after the free Gemini allowance resets, so the team news check has fresh quota
+on:
+  schedule:
+    - cron: '17 8 * * *'
+    - cron: '47 9 * * *'   # backup at 12:47 Nairobi, runs only if the 11:17 report did not go out
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test without sending to Telegram (1 = test, 0 = real)'
+        default: '0'
+      acca_min_p:
+        description: 'Lowest chance for a daily multibet leg (normally 0.7)'
+        default: '0.7'
+      jackpot_games:
+        description: 'Optional: jackpot games, one "Home v Away" per line or separated by ;'
+        default: ''
+      hours_ahead:
+        description: 'How many hours ahead to look (normally 30)'
+        default: '30'
+concurrency: { group: betdesk, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private store
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          for p in data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; do rm -rf "$p"; ln -s "$PWD/vault/$p" "$p"; done
+          mkdir -p vault/data/logs
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Self check
+        run: node betdesk/test.js > /dev/null
+      - name: Run the Bet Desk
+        env:
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ODDSPAPI_KEY: ${{ secrets.ODDSPAPI_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_BETDESK_KEY: ${{ secrets.GEMINI_BETDESK_KEY }}
+          BACKUP_RUN: ${{ github.event.schedule == '47 9 * * *' && '1' || '0' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+          JACKPOT_GAMES: ${{ github.event.inputs.jackpot_games || '' }}
+          ACCA_MIN_P: ${{ github.event.inputs.acca_min_p || '0.7' }}
+          ACCA_MAX_LEGS: ${{ github.event.inputs.acca_min_p && github.event.inputs.acca_min_p != '0.7' && '8' || '6' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          HOURS_AHEAD: ${{ github.event.inputs.hours_ahead || '30' }}
+        run: set -a; [ -f vault/private.env ] && . vault/private.env; set +a; node betdesk/run.js > vault/data/logs/betdesk.log 2>&1
+      - name: Tell the owner it failed
+        if: failure()
+        env:
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OW: ${{ secrets.TELEGRAM_OWNER_ID }}
+        run: |
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TG/sendMessage" --data-urlencode "chat_id=$OW" --data-urlencode "text=BET DESK ALERT: the latest picks run failed at $(TZ=Africa/Nairobi date '+%H:%M on %a %d %b'). Tell Claude to check the Bet Desk."
+      - name: Save pick record
+        if: success()
+        run: |
+          cd vault
+          git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
+          git add -A data/betdesk data/logs
+          git diff --cached --quiet && exit 0
+          git commit -q -m "Bet Desk run $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4; do git pull -q --rebase -X theirs --autostash && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1

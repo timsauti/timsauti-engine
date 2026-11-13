@@ -1,0 +1,86 @@
+name: Facebook agent
+on:
+  schedule:
+    - cron: '7 2,7,12,16 * * *'   # full runs at 05:07, 10:07, 15:07 and 19:07 Nairobi time (writing, comments, results); the quick check covers the other hours (free GitHub minutes)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test without posting (1 = test, 0 = real)'
+        default: '0'
+      qc_test:
+        description: 'Owner check only: page:postid list to run the final editor check on (publishes nothing)'
+        default: ''
+      owner_test:
+        description: 'Owner check only: 1 = prepare a sample owner photo post (publishes nothing)'
+        default: '0'
+      thread_test:
+        description: 'Owner check only: page key to write a sample thread for (publishes nothing)'
+        default: ''
+      talk_test:
+        description: 'Owner check only: 1 = write a sample Talk of the Day post (publishes nothing)'
+        default: '0'
+concurrency:
+  group: agent
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private store
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          for p in data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; do rm -rf "$p"; ln -s "$PWD/vault/$p" "$p"; done
+          mkdir -p vault/data/logs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/cache@v4
+        id: nm
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - if: steps.nm.outputs.cache-hit != 'true'
+        run: npm install --no-audit --no-fund
+      - name: Self check
+        run: node tools/selftest.js
+      - name: Tell the owner the self check failed
+        if: failure()
+        env:
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OW: ${{ secrets.TELEGRAM_OWNER_ID }}
+        run: |
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TG/sendMessage" --data-urlencode "chat_id=$OW" --data-urlencode "text=AGENT ALERT: the agent's self check failed, so this run was stopped before posting anything. Claude needs to fix the code."
+      - name: Run the agent
+        env:
+          TIMSAUTI_PAGE_TOKEN: ${{ secrets.TIMSAUTI_PAGE_TOKEN }}
+          MAKASA_PAGE_TOKEN: ${{ secrets.MAKASA_PAGE_TOKEN }}
+          SAUTI_PAGE_TOKEN: ${{ secrets.SAUTI_PAGE_TOKEN }}
+          FB_USER_TOKEN: ${{ secrets.FB_USER_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_OPPDESK_KEY: ${{ secrets.GEMINI_OPPDESK_KEY }}
+          GEMINI_BETDESK_KEY: ${{ secrets.GEMINI_BETDESK_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          QC_TEST: ${{ github.event.inputs.qc_test || '' }}
+          TALK_TEST: ${{ github.event.inputs.talk_test || '0' }}
+          THREAD_TEST: ${{ github.event.inputs.thread_test || '' }}
+          OWNER_TEST: ${{ github.event.inputs.owner_test || '0' }}
+        run: node agent/run.js > vault/data/logs/agent.log 2>&1
+      - name: Save the agent's records
+        if: always()
+        run: |
+          cd vault
+          git config user.name "timsauti-agent"
+          git config user.email "agent@users.noreply.github.com"
+          git add -A data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt
+          git diff --cached --quiet || git commit -q -m "Agent run $(date -u +%Y-%m-%dT%H:%MZ)"
+          # never lose a run's records: on a clash the run's own changes win, and the push is retried
+          for i in 1 2 3 4; do git pull -q --rebase -X theirs --autostash && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1

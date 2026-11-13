@@ -1,0 +1,25 @@
+name: Photo bank
+on: { workflow_dispatch: {} }
+concurrency: { group: agent, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private store
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          for p in data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; do rm -rf "$p"; ln -s "$PWD/vault/$p" "$p"; done
+          mkdir -p vault/data/logs
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: node tools/photo_bank.js
+      - name: Save
+        run: |
+          git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
+          git add agent/assets/leaders; git diff --cached --quiet && exit 0; git commit -q -m "Photo bank of public figures"
+          for i in 1 2 3 4; do git pull -q --rebase -X theirs && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1

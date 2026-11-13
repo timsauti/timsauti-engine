@@ -1,0 +1,481 @@
+{
+ "william_ruto": {
+  "name": "William Ruto",
+  "title": "William Ruto",
+  "file": "william_ruto.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:President_Ruto_Potrait_2022_(cropped).jpg",
+  "w": 1200,
+  "h": 1480,
+  "tight": true
+ },
+ "kithure_kindiki": {
+  "name": "Kithure Kindiki",
+  "title": "Kithure Kindiki",
+  "file": "kithure_kindiki.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Kithure_Kindiki.jpg",
+  "w": 1200,
+  "h": 1199
+ },
+ "rigathi_gachagua": {
+  "name": "Rigathi Gachagua",
+  "title": "Rigathi Gachagua",
+  "file": "rigathi_gachagua.jpg",
+  "credit": "Nicolas Landemard / European Union, 2023 / EC - Au, CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rigathi_Gachagua_October_2023_(cropped).jpg",
+  "w": 1200,
+  "h": 1595
+ },
+ "kalonzo_musyoka": {
+  "name": "Kalonzo Musyoka",
+  "title": "Kalonzo Musyoka",
+  "file": "kalonzo_musyoka.jpg",
+  "credit": "Raidarmax, CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Kalonzo_Musyoka1.jpg",
+  "w": 1200,
+  "h": 1598
+ },
+ "raila_odinga": {
+  "name": "Raila Odinga",
+  "title": "Raila Odinga",
+  "file": "raila_odinga.jpg",
+  "credit": "World Economic Forum from Cologny, Switzerland, CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Raila_Amolo_Odinga_2009_(cropped).jpg",
+  "w": 1200,
+  "h": 1591
+ },
+ "musalia_mudavadi": {
+  "name": "Musalia Mudavadi",
+  "title": "Musalia Mudavadi",
+  "file": "musalia_mudavadi.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Musalia_Mudavadi,_Prime_Cabinet_Secretary_and_Cabinet_Secretary_for_Foreign_and_Diaspora_Affairs_of_Kenya,_at_the_Department_of_State_in_Washington,_D.C._on_February_1,_2024_(cropped).jpg",
+  "w": 1200,
+  "h": 1599
+ },
+ "johnson_sakaja": {
+  "name": "Johnson Sakaja",
+  "title": "Johnson Sakaja",
+  "file": "johnson_sakaja.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Sakaja_in_2024.jpg",
+  "w": 1200,
+  "h": 1262
+ },
+ "ferdinand_waititu": {
+  "name": "Ferdinand Waititu",
+  "missing": "no lead image"
+ },
+ "wavinya_ndeti": {
+  "name": "Wavinya Ndeti",
+  "title": "Wavinya Ndeti",
+  "file": "wavinya_ndeti.jpg",
+  "credit": "Japhe KE, CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Wavinya_Ndeti.jpg",
+  "w": 1200,
+  "h": 1200
+ },
+ "mutula_kilonzo_junior": {
+  "name": "Mutula Kilonzo Junior",
+  "missing": "no lead image"
+ },
+ "julius_malombe": {
+  "name": "Julius Malombe",
+  "missing": "no lead image"
+ },
+ "alfred_mutua": {
+  "name": "Alfred Mutua",
+  "missing": "not a photo file"
+ },
+ "charity_ngilu": {
+  "name": "Charity Ngilu",
+  "title": "Charity Ngilu",
+  "file": "charity_ngilu.jpg",
+  "credit": "World Water Week, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Hon._Charity_Kaluki_Ngilu_at_Opening_Session.jpg",
+  "w": 1200,
+  "h": 1587
+ },
+ "kipchumba_murkomen": {
+  "name": "Kipchumba Murkomen",
+  "title": "Kipchumba Murkomen",
+  "file": "kipchumba_murkomen.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Cabinet_Secretary_at_the_Ministry_of_Interior_and_National_Administration_Onesimus_Kipchumba_Murkomen.jpg",
+  "w": 1200,
+  "h": 1200
+ },
+ "john_mbadi": {
+  "name": "John Mbadi",
+  "missing": "no lead image"
+ },
+ "aden_duale": {
+  "name": "Aden Duale",
+  "title": "Aden Duale",
+  "file": "aden_duale.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Kenya_Defense_Cabinet_Secretary_Aden_Duale_at_the_Kenya_Ministry_of_Defense_in_Nairobi,_Kenya_on_September_25,_2023_-_230925-D-PM193-2018_(cropped).jpg",
+  "w": 1200,
+  "h": 1601
+ },
+ "moses_wetangula": {
+  "name": "Moses Wetang'ula",
+  "missing": "licence not usable: KOGL Type 1"
+ },
+ "amason_kingi": {
+  "name": "Amason Kingi",
+  "missing": "not a photo file"
+ },
+ "martha_karua": {
+  "name": "Martha Karua",
+  "title": "Martha Karua",
+  "file": "martha_karua.jpg",
+  "credit": "Tom Zed, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Martha_Karua_(cropped).jpg",
+  "w": 1200,
+  "h": 1107
+ },
+ "eugene_wamalwa": {
+  "name": "Eugene Wamalwa",
+  "missing": "not a photo file"
+ },
+ "fred_matiangi": {
+  "name": "Fred Matiang'i",
+  "title": "Fred Matiang'i",
+  "file": "fred_matiangi.jpg",
+  "credit": "ICT Authority, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Fred_Matiangi_2013.jpg",
+  "w": 1200,
+  "h": 1308
+ },
+ "edwin_sifuna": {
+  "name": "Edwin Sifuna",
+  "title": "Edwin Sifuna",
+  "file": "edwin_sifuna.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Sifuna_in_2024.jpg",
+  "w": 1200,
+  "h": 1080
+ },
+ "gladys_wanga": {
+  "name": "Gladys Wanga",
+  "title": "Gladys Wanga",
+  "file": "gladys_wanga.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Wanga_in_2024.jpg",
+  "w": 1200,
+  "h": 927
+ },
+ "anyang_nyongo": {
+  "name": "Anyang' Nyong'o",
+  "title": "Anyang' Nyong'o",
+  "file": "anyang_nyongo.jpg",
+  "credit": "Etaya TV, CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Kisumu_Governor_Anyang_Nyong%27o_giving_speech.jpg",
+  "w": 1200,
+  "h": 1603
+ },
+ "simba_arati": {
+  "name": "Simba Arati",
+  "missing": "no lead image"
+ },
+ "junet_mohamed": {
+  "name": "Junet Mohamed",
+  "missing": "no lead image"
+ },
+ "kimani_ichungwah": {
+  "name": "Kimani Ichung'wah",
+  "missing": "no lead image"
+ },
+ "opiyo_wandayi": {
+  "name": "Opiyo Wandayi",
+  "title": "Opiyo Wandayi",
+  "file": "opiyo_wandayi.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Cabinet_Secretary_of_Energy_James_Opiyo_Wandayi.jpg",
+  "w": 1200,
+  "h": 1242
+ },
+ "ababu_namwamba": {
+  "name": "Ababu Namwamba",
+  "title": "Ababu Namwamba",
+  "file": "ababu_namwamba.jpg",
+  "credit": "User:AbabuTerra, CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Hon_Ababu_Namwamba_taking_oath_of_office_as_Minister_for_Sports_and_Youth_Affairs_before_President_Mwai_Kibaki_at_Harambee_House,_Nairobi_2013-08-23_17-37.jpg",
+  "w": 1200,
+  "h": 1600
+ },
+ "hassan_joho": {
+  "name": "Hassan Joho",
+  "missing": "no lead image"
+ },
+ "mike_sonko": {
+  "name": "Mike Sonko",
+  "title": "Mike Sonko",
+  "file": "mike_sonko.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Sonko_in_2023.jpg",
+  "w": 1200,
+  "h": 1320
+ },
+ "uhuru_kenyatta": {
+  "name": "Uhuru Kenyatta",
+  "missing": "not a photo file"
+ },
+ "martha_koome": {
+  "name": "Martha Koome",
+  "title": "Martha Koome",
+  "file": "martha_koome.jpg",
+  "credit": "Cmwaura, CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Martha_Koome.jpg",
+  "w": 1200,
+  "h": 800
+ },
+ "okiya_omtatah": {
+  "name": "Okiya Omtatah",
+  "missing": "no lead image"
+ },
+ "babu_owino": {
+  "name": "Babu Owino",
+  "missing": "no lead image"
+ },
+ "anne_waiguru": {
+  "name": "Anne Waiguru",
+  "title": "Anne Waiguru",
+  "file": "anne_waiguru.jpg",
+  "credit": "Bronson Kiprotich, CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:HE._Ann_Waiguru.jpg",
+  "w": 1200,
+  "h": 690
+ },
+ "kimani_wamatangi": {
+  "name": "Kimani Wamatangi",
+  "missing": "no lead image"
+ },
+ "mike_mbuvi_sonko": {
+  "name": "Mike Mbuvi Sonko",
+  "missing": "no lead image"
+ },
+ "justin_muturi": {
+  "name": "Justin Muturi",
+  "title": "Justin Muturi",
+  "file": "justin_muturi.jpg",
+  "credit": "https://www.kmu.gov.ua/, CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Justin_Muturi_(MUS1515)_(cropped).jpg",
+  "w": 1200,
+  "h": 1801
+ },
+ "mithika_linturi": {
+  "name": "Mithika Linturi",
+  "missing": "no lead image"
+ },
+ "moses_kuria": {
+  "name": "Moses Kuria",
+  "title": "Moses Kuria",
+  "file": "moses_kuria.jpg",
+  "credit": "Luis Tato / European Union, 2023 / EC - Audiovisua, CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Moses_Kuria_-_2023_(cropped).jpg",
+  "w": 1200,
+  "h": 1656
+ },
+ "peter_salasya": {
+  "name": "Peter Salasya",
+  "missing": "no lead image"
+ },
+ "ndindi_nyoro": {
+  "name": "Ndindi Nyoro",
+  "title": "Ndindi Nyoro",
+  "file": "ndindi_nyoro.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:NDINDINYORO.jpg",
+  "w": 1200,
+  "h": 800
+ },
+ "gideon_moi": {
+  "name": "Gideon Moi",
+  "missing": "no lead image"
+ },
+ "cleophas_malala": {
+  "name": "Cleophas Malala",
+  "missing": "no lead image"
+ },
+ "oscar_sudi": {
+  "name": "Oscar Sudi",
+  "missing": "no lead image"
+ },
+ "millicent_omanga": {
+  "name": "Millicent Omanga",
+  "missing": "no lead image"
+ },
+ "susan_kihika": {
+  "name": "Susan Kihika",
+  "title": "Susan Kihika",
+  "file": "susan_kihika.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Susan_Kihika_at_an_event.jpg",
+  "w": 1200,
+  "h": 799
+ },
+ "fatuma_achani": {
+  "name": "Fatuma Achani",
+  "missing": "no lead image"
+ },
+ "ali_hassan_joho": {
+  "name": "Ali Hassan Joho",
+  "missing": "no lead image"
+ },
+ "stephen_kalonzo_musyoka": {
+  "name": "Stephen Kalonzo Musyoka",
+  "title": "Kalonzo Musyoka",
+  "file": "stephen_kalonzo_musyoka.jpg",
+  "credit": "Raidarmax, CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Kalonzo_Musyoka1.jpg",
+  "w": 1200,
+  "h": 1598
+ },
+ "raila_odinga_junior": {
+  "name": "Raila Odinga Junior",
+  "missing": "no lead image"
+ },
+ "winnie_odinga": {
+  "name": "Winnie Odinga",
+  "title": "Winnie Odinga",
+  "file": "winnie_odinga.jpg",
+  "credit": "Kazimedia, CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Winnie_Odinga.jpg",
+  "w": 1200,
+  "h": 1600
+ },
+ "rosemary_odinga": {
+  "name": "Rosemary Odinga",
+  "missing": "not a photo file"
+ },
+ "ida_odinga": {
+  "name": "Ida Odinga",
+  "title": "Ida Odinga",
+  "file": "ida_odinga.jpg",
+  "credit": "",
+  "source": "https://commons.wikimedia.org/wiki/File:Ida_Odinga_2009.jpg",
+  "w": 1200,
+  "h": 1546
+ },
+ "wycliffe_oparanya": {
+  "name": "Wycliffe Oparanya",
+  "title": "Wycliffe Oparanya",
+  "file": "wycliffe_oparanya.jpg",
+  "credit": "United Nations Development Programme, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Wycliffe_Oparanya_UNDP_HQ_2010.jpg",
+  "w": 1200,
+  "h": 1649
+ },
+ "hillary_barchok": {
+  "name": "Hillary Barchok",
+  "missing": "no lead image"
+ },
+ "abdulswamad_nassir": {
+  "name": "Abdulswamad Nassir",
+  "missing": "no lead image"
+ },
+ "natembeya_george": {
+  "name": "Natembeya George",
+  "missing": "no lead image"
+ },
+ "kawira_mwangaza": {
+  "name": "Kawira Mwangaza",
+  "missing": "no lead image"
+ },
+ "paul_kihara_kariuki": {
+  "name": "Paul Kihara Kariuki",
+  "missing": "no lead image"
+ },
+ "githu_muigai": {
+  "name": "Githu Muigai",
+  "title": "Githu Muigai",
+  "file": "githu_muigai.jpg",
+  "credit": "ICT Authority, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Githu_Muigai.jpg",
+  "w": 1200,
+  "h": 1292
+ },
+ "dorcas_oduor": {
+  "name": "Dorcas Oduor",
+  "missing": "no lead image"
+ },
+ "geoffrey_ruku": {
+  "name": "Geoffrey Ruku",
+  "missing": "no lead image"
+ },
+ "julius_ogamba": {
+  "name": "Julius Ogamba",
+  "missing": "no lead image"
+ },
+ "salim_mvurya": {
+  "name": "Salim Mvurya",
+  "missing": "no lead image"
+ },
+ "rebecca_miano": {
+  "name": "Rebecca Miano",
+  "title": "Rebecca Miano",
+  "file": "rebecca_miano.jpg",
+  "credit": "World Trade Organization, CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Kenya_Cabinet_Secretary_For_Investments,_Trade_And_Industry_Rebecca_Miano_at_the_WTO_Heads_of_Delegation_meeting.jpg",
+  "w": 1200,
+  "h": 800
+ },
+ "aisha_jumwa": {
+  "name": "Aisha Jumwa",
+  "missing": "no lead image"
+ },
+ "ezekiel_machogu": {
+  "name": "Ezekiel Machogu",
+  "missing": "no lead image"
+ },
+ "david_maraga": {
+  "name": "David Maraga",
+  "title": "David Maraga",
+  "file": "david_maraga.jpg",
+  "credit": "Carltdpp, CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:CJ_Maraga_(cropped).jpg",
+  "w": 1200,
+  "h": 1601
+ },
+ "willy_mutunga": {
+  "name": "Willy Mutunga",
+  "title": "Willy Mutunga",
+  "file": "willy_mutunga.jpg",
+  "credit": "Ford Foundation, CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Willy_Mutunga.jpg",
+  "w": 1200,
+  "h": 1094
+ },
+ "philomena_mwilu": {
+  "name": "Philomena Mwilu",
+  "title": "Philomena Mwilu",
+  "file": "philomena_mwilu.jpg",
+  "credit": "Queen Asali, CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Lady_Justice_Philomena_Mbete_Mwilu.jpg",
+  "w": 1200,
+  "h": 800
+ },
+ "nelson_havi": {
+  "name": "Nelson Havi",
+  "missing": "no lead image"
+ },
+ "ahmednasir_abdullahi": {
+  "name": "Ahmednasir Abdullahi",
+  "missing": "no lead image"
+ },
+ "kindiki_kithure": {
+  "name": "Kindiki Kithure",
+  "missing": "no lead image"
+ },
+ "kenneth_marende": {
+  "name": "Kenneth Marende",
+  "missing": "licence not usable: GODL-India"
+ },
+ "stephen_mbogo": {
+  "name": "Stephen Mbogo",
+  "missing": "no lead image"
+ }
+}

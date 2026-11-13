@@ -1,0 +1,430 @@
+{
+ "politics": [
+  {
+   "file": "politics_1_mw0f6zut.jpg",
+   "title": "File:Parliament of Kenya 02.JPG",
+   "credit": "Ruslik0, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_2_mw0f8ygm.jpg",
+   "title": "File:Parliament of Kenya 01.JPG",
+   "credit": "Ruslik0, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_3_mw0fam63.jpg",
+   "title": "File:Kenyan Parliament Entry.JPG",
+   "credit": "Wing, CC BY-SA 3.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_4_mw0fb14e.jpg",
+   "title": "File:Interior of Kenya National Assembly.jpg",
+   "credit": "Sir. Kevin, CC BY-SA 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_5_mw0fbqk5.jpg",
+   "title": "File:National Assembly building ruins.jpg",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_6_mw0fis7c.jpg",
+   "title": "File:Parliament Buildings, Nairobi, Kenya -entrance-15April2010.jpg",
+   "credit": "Jorge Láscar from Bogotá, Colombia, CC BY-SA 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "politics_7_mw0fk4uk.jpg",
+   "title": "File:Parliament Buildings and Uhuru Park, Nairobi.jpg",
+   "credit": "Ninara, CC BY 2.0",
+   "cleanChecked": true
+  }
+ ],
+ "court": [
+  {
+   "file": "court_2_mw05afy2.jpg",
+   "title": "File:Supreme Court of Kenya 05.jpg",
+   "credit": ""
+  },
+  {
+   "file": "court_3_mw05ahaq.jpg",
+   "title": "File:Supreme Court of Kenya.JPG",
+   "credit": ""
+  },
+  {
+   "file": "court_4_mw05ajqy.jpg",
+   "title": "File:The Statue of Jomo Kenyatta.jpg",
+   "credit": "Endesia94, CC BY-SA 4.0"
+  },
+  {
+   "file": "court_5_mw05aqs1.jpg",
+   "title": "File:Kenya High Court.JPG",
+   "credit": "Wing, CC BY-SA 3.0"
+  },
+  {
+   "file": "court_6_mw05ayhq.jpg",
+   "title": "File:Orrling of Nairobi.jpg",
+   "credit": "Orrling, CC BY-SA 3.0"
+  },
+  {
+   "file": "court_7_mw05b0xo.jpg",
+   "title": "File:Nairobi city hall.jpg",
+   "credit": "Jorge Láscar, CC BY-SA 2.0"
+  },
+  {
+   "file": "court_8_mw0661tp.jpg",
+   "title": "File:Judge's gavel against lgbt rainbow flag (51909331543).jpg",
+   "credit": "Jernej Furman from Slovenia, CC BY 2.0"
+  },
+  {
+   "file": "court_8_mw0ft2jm.jpg",
+   "title": "File:Judge beating a protester (Royal Courts of Justice).jpg",
+   "credit": "",
+   "cleanChecked": true
+  }
+ ],
+ "police": [
+  {
+   "file": "police_3_mw05bh3d.jpg",
+   "title": "File:AMISOM Combat Engineers search for IEDs in Kismayo 16 (8093708709).jpg",
+   "credit": ""
+  },
+  {
+   "file": "police_4_mw05bibl.jpg",
+   "title": "File:AMISOM Combat Engineers search for IEDs in Kismayo 12 (8093699894).jpg",
+   "credit": ""
+  },
+  {
+   "file": "police_6_mw05bplj.jpg",
+   "title": "File:AMISOM Combat Engineers search for IEDs in Kismayo 06 (8093694616).jpg",
+   "credit": ""
+  },
+  {
+   "file": "police_7_mw05brqj.jpg",
+   "title": "File:AMISOM Combat Engineers search for IEDs in Kismayo 01 (8093681175).jpg",
+   "credit": ""
+  },
+  {
+   "file": "police_8_mw05bv3j.jpg",
+   "title": "File:AMISOM Combat Engineers search for IEDs in Kismayo 04 (8093687744).jpg",
+   "credit": ""
+  },
+  {
+   "file": "police_6_mw0g5645.jpg",
+   "title": "File:Rear of Administration Police vehicle at Mountain View Mall.jpg",
+   "credit": "Nimba-travellor, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "police_7_mw0g5lrp.jpg",
+   "title": "File:Administration Police vehicle at Mountain View Mall, 2021-07-09 (a).jpg",
+   "credit": "Nimba-travellor, CC BY-SA 4.0",
+   "cleanChecked": true
+  }
+ ],
+ "education": [],
+ "health": [
+  {
+   "file": "health_1_mw0gwhqw.jpg",
+   "title": "File:District Hospital at Hola, Kenya 2005.jpg",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "health_2_mw0h1jbs.jpg",
+   "title": "File:Kenya Acorn Community Hospital - panoramio.jpg",
+   "credit": "LindaPatterson, CC BY-SA 3.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "health_3_mw0h7tku.jpg",
+   "title": "File:The African Reference Laboratory for Bee Health (15052118394).jpg",
+   "credit": "ICIPE - International Centre of Insect Physiology , CC BY 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "health_4_mw0ha4fd.jpg",
+   "title": "File:Ambulance readyfor emargency response 26.jpg",
+   "credit": "Njoki ngari, CC BY-SA 4.0",
+   "cleanChecked": true
+  }
+ ],
+ "weather": [
+  {
+   "file": "weather_1_mw0hbeys.jpg",
+   "title": "File:Bridge over the Tana river (Kenya).JPEG",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_2_mw0hc61z.jpg",
+   "title": "File:Beauty, Serenity, Nature. Lake Solai, Nakuru County, Kenya flood lakes.jpg",
+   "credit": "Mumbi Suzzieh, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_3_mw0henvd.jpg",
+   "title": "File:Tana river flood, 1998.JPEG",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_4_mw0hhq3f.jpg",
+   "title": "File:Storm Building - Nakuru.jpg",
+   "credit": "Gilbert Mwangi, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_5_mw0hlje9.jpg",
+   "title": "File:The Haunted Waterfall.jpg",
+   "credit": "Suekoori, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_6_mw0hm4fn.jpg",
+   "title": "File:Strength and courage.jpg",
+   "credit": "Aisha Abdulalim, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_7_mw0hmhjn.jpg",
+   "title": "File:Storm clouds approaching.jpg",
+   "credit": "Kenothia, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "weather_8_mw0hmvj5.jpg",
+   "title": "File:Storm clouds Gulf of Guinea.jpg",
+   "credit": "FiifiCudjoe, CC BY-SA 4.0",
+   "cleanChecked": true
+  }
+ ],
+ "farming": [
+  {
+   "file": "farming_1_mw0hn8wy.jpg",
+   "title": "File:Maize on a Mount Kenya farm.jpg",
+   "credit": "CIAT, CC BY-SA 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_2_mw0hqnrn.jpg",
+   "title": "File:Maize-push-pull-farm-at-ICIPE, Mbita Point-3, Kenya.jpg",
+   "credit": "Aneth David (SLU), CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_3_mw0hrspt.jpg",
+   "title": "File:Maize farming.jpg",
+   "credit": "Mathew kemboi, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_4_mw0i2qsz.jpg",
+   "title": "File:Climate smart agriculture in Machakos county (15453514418).jpg",
+   "credit": "Climate Change, Agriculture and Food Security, CC BY 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_5_mw0i4hd5.jpg",
+   "title": "File:Goat kid in Matuu Kenya.jpg",
+   "credit": "Rhodamuthue, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_6_mw0i5u0k.jpg",
+   "title": "File:Kenyan Woman at the farm.jpg",
+   "credit": "Ms Kabintie, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_7_mw0i7gcg.jpg",
+   "title": "File:Tea picking.jpg",
+   "credit": "Rosegichukij, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "farming_8_mw0i88ri.jpg",
+   "title": "File:Harvesting.jpg",
+   "credit": "Shadrack Kipkoech Rono, CC BY-SA 4.0",
+   "cleanChecked": true
+  }
+ ],
+ "economy": [
+  {
+   "file": "economy_1_mw0igea9.jpg",
+   "title": "File:Central Bank of Kenya Pensions Tower.jpg",
+   "credit": "Omar David Sandoval Sida, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "economy_2_mw0ik59x.jpg",
+   "title": "File:Supermarket Naivas.jpg",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "economy_3_mw0ilzkp.jpg",
+   "title": "File:Shopping Cart Supermarket.jpg",
+   "credit": "",
+   "cleanChecked": true
+  },
+  {
+   "file": "economy_4_mw0iosba.jpg",
+   "title": "File:2013-01-22 08-13-22 Kenya Nairobi Area - Empakasi.JPG",
+   "credit": "Hansueli Krapf This file was uploaded with Commoni, CC BY-SA 3.0",
+   "cleanChecked": true
+  }
+ ],
+ "transport": [
+  {
+   "file": "transport_1_mw0iq1tg.jpg",
+   "title": "File:Kenya-Ethiopia Highway (11670320324).jpg",
+   "credit": "David Stanley from Nanaimo, Canada, CC BY 2.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_2_mw0irl0g.jpg",
+   "title": "File:Highway kenya.jpg",
+   "credit": "Mikenjau, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_3_mw0irz52.jpg",
+   "title": "File:Roadside landscape and fence along highway in Kenya.jpg",
+   "credit": "Lebu Ayiga, CC BY 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_4_mw0iuxq7.jpg",
+   "title": "File:Kenya highway.jpg",
+   "credit": "Safaritravelplus, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_5_mw0ivzq3.jpg",
+   "title": "File:A colorful matatu in Nairobi, Kenya, during rush hour.jpg",
+   "credit": "AEira-WMF, CC BY 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_6_mw0j1fp5.jpg",
+   "title": "File:Matatu parking at Tribe Hotel in Nairobi-2925.jpg",
+   "credit": "New York-air, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_7_mw0j45ol.jpg",
+   "title": "File:Nairobi Expressway, 2025 (02).jpg",
+   "credit": "Bahnfrend, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "transport_8_mw0j4j6u.jpg",
+   "title": "File:Nairobi Expressway (52580494095).jpg",
+   "credit": "Ninara, CC BY 2.0",
+   "cleanChecked": true
+  }
+ ],
+ "nairobi": [
+  {
+   "file": "nairobi_1_mw0j4zi7.jpg",
+   "title": "File:Buffalo Nairobi Skyline Savannah Kenya May19 R1600769.jpg",
+   "credit": "This Photo was taken by Timothy A. Gonsalves. Feel, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_2_mw0j60oj.jpg",
+   "title": "File:Nairobi Skyline Savannah Kenya May19 R1600687.jpg",
+   "credit": "This Photo was taken by Timothy A. Gonsalves. Feel, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_3_mw0j8qb6.jpg",
+   "title": "File:Nairobi skyline P1000019.jpg",
+   "credit": "Lmwangi, CC BY-SA 3.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_4_mw0jaf92.jpg",
+   "title": "File:Nairobi skyline P1000020.jpg",
+   "credit": "Lmwangi, CC BY-SA 3.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_5_mw0jc9bl.jpg",
+   "title": "File:Nairobi skyline P1000021.jpg",
+   "credit": "Lmwangi, CC BY-SA 3.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_6_mw0jdl4z.jpg",
+   "title": "File:Nairobi's Central Business District Landmark Skyscrapers..jpg",
+   "credit": "Tall Black, CC BY-SA 4.0",
+   "cleanChecked": true
+  },
+  {
+   "file": "nairobi_7_mw0jeznl.jpg",
+   "title": "File:Sunny day in the Central Business District, Nairobi.jpg",
+   "credit": "Keshie Muchai, CC BY-SA 4.0",
+   "cleanChecked": true
+  }
+ ],
+ "ukambani": [],
+ "water": [],
+ "sports": [],
+ "technology": [],
+ "faith": [],
+ "fire": [
+  {
+   "file": "fire_7_mw05vf10.jpg",
+   "title": "File:2013 10 04 Somali Firefighter Training Nairobi 003 (10203213303).jpg",
+   "credit": ""
+  }
+ ],
+ "business": [
+  {
+   "file": "business_1_mw05vgth.jpg",
+   "title": "File:A Shop Adjacent A Modern Building.jpg",
+   "credit": "Swabir2022, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_2_mw05vkf4.jpg",
+   "title": "File:KER - Roadside settlement on the outskirts of Kericho, Kenya, 2012.jpg",
+   "credit": "Josep M. Gracia, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_3_mw05wpk8.jpg",
+   "title": "File:Business at Marikiti Market in Kisii County ,Kenya ,East Africa.jpg",
+   "credit": "Janetnyanya, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_4_mw05wr7e.jpg",
+   "title": "File:A chicken trader in Meru, Kenya.jpg",
+   "credit": "Ekiminya, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_5_mw05wtvj.jpg",
+   "title": "File:Agri-produce market, road-side.jpg",
+   "credit": "Peggit, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_6_mw05wv69.jpg",
+   "title": "File:Icipe orientation grain traders Africa.jpg",
+   "credit": "ICIPE - International Centre of Insect Physiology , CC BY 2.0"
+  },
+  {
+   "file": "business_7_mw05wye1.jpg",
+   "title": "File:Women sellers in a market buy from another seller.jpg",
+   "credit": "Edwin Macharia, CC BY-SA 4.0"
+  },
+  {
+   "file": "business_8_mw05x0kl.jpg",
+   "title": "File:Cereals Open Air Market.jpg",
+   "credit": "Elisha Osotsi, CC BY-SA 4.0"
+  }
+ ],
+ "government": []
+}

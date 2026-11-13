@@ -1,0 +1,45 @@
+name: Manage a post
+on:
+  workflow_dispatch:
+    inputs:
+      action: { description: 'hide, unhide or post', required: true }
+      page: { description: 'makasa or timsauti', required: true }
+      target: { description: 'Facebook post id (hide/unhide) or prepared post id (post)', required: true }
+concurrency: { group: agent, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  manage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private store
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          for p in data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; do rm -rf "$p"; ln -s "$PWD/vault/$p" "$p"; done
+          mkdir -p vault/data/logs
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund || npm install --no-audit --no-fund --ignore-scripts   # a failed ffmpeg download (GitHub 504) must not block owner requests
+      - name: Do it
+        run: node agent/manage.js > vault/data/logs/manage.log 2>&1
+        env:
+          ACTION: ${{ github.event.inputs.action }}
+          PAGE: ${{ github.event.inputs.page }}
+          TARGET: ${{ github.event.inputs.target }}
+          TIMSAUTI_PAGE_TOKEN: ${{ secrets.TIMSAUTI_PAGE_TOKEN }}
+          MAKASA_PAGE_TOKEN: ${{ secrets.MAKASA_PAGE_TOKEN }}
+          SAUTI_PAGE_TOKEN: ${{ secrets.SAUTI_PAGE_TOKEN }}
+          FB_USER_TOKEN: ${{ secrets.FB_USER_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - name: Save records
+        if: always()
+        run: |
+          cd vault
+          git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
+          git add -A data photos agent/assets/people agent/assets/cornerstone oppdesk/profile.json agent/makasa_style.txt; git diff --cached --quiet && exit 0; git commit -q -m "Owner request: ${{ github.event.inputs.action }}"
+          for i in 1 2 3 4; do git pull -q --rebase -X theirs && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1

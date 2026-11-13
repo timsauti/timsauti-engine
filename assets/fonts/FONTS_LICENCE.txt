@@ -1,0 +1,6 @@
+Fonts used on the quote pictures
+
+Lora (Cyreal) and Poppins (Indian Type Foundry) are published under the SIL Open Font License, Version 1.1.
+They are free to use, embed and redistribute, including for commercial work.
+Full licence text: https://openfontlicense.org/open-font-license-official-text/
+Source: https://fonts.google.com/specimen/Lora and https://fonts.google.com/specimen/Poppins
