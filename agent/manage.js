@@ -281,7 +281,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const me = await (await fetch(`https://api.telegram.org/bot${tk}/getMe`)).json().catch(() => ({}));
     const up = await (await fetch(`https://api.telegram.org/bot${tk}/getUpdates?timeout=0`)).json().catch(() => ({}));
     const senders = [...new Set((up.result || []).map((u) => { const m = u.message || (u.callback_query && u.callback_query.message) || {}; const f = u.message ? u.message.from : (u.callback_query || {}).from; return f ? f.id + ' ' + (f.first_name || '') : null; }).filter(Boolean))];
-    const ownerLooksLike = String(ow || '').replace(/[0-9]/g, '#');
+    const ownerLooksLike = /^-?[0-9]{5,15}$/.test(String(ow || '').trim()) ? 'a number (correct)' : (/:/.test(String(ow || '')) ? 'looks like a bot key, not an ID' : 'not a plain number');   // never records the value itself
     fs.writeFileSync(path.join(ROOT, 'data', 'tg_test.json'), JSON.stringify({ at: new Date().toISOString(), ownerSet: !!ow, ownerShape: ownerLooksLike, bot: me.ok ? '@' + me.result.username : 'key not accepted', recentSenders: senders, ok: j.ok, error: j.ok ? null : String(j.description || r.status).slice(0, 200) }, null, 1)); console.log(j.ok ? 'sent' : 'failed');
   } else if (ACTION === 'probe') {
     // read only checks of what this Page key can do; no changes are made
