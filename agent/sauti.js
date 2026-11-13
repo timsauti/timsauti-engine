@@ -231,6 +231,8 @@ async function leaderBank(name, gemini, want) {
 // reports of the same story. Each lead photo is checked to show this story's person or scene, and another outlet's logo is cut away.
 async function storyPhotos(title, gemini, dir, avoid, first) {
   if (!title || !gemini) return null; avoid = avoid || []; storyPhotos.last = [];
+  // a crime, court or death story never shows a private suspect, victim or relative: only officials, police, a court or a place
+  const sensitive = /\b(charged|arrest|suspect|court|accused|murder|killed|died|death|dead|police|DCI|robbery|fraud|scam|jailed|sentenced|rape|assault|stolen|theft|detained)/i.test(title);
   try {
     const words = String(title).replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 3).slice(0, 9);
     const xml = await (await fetch('https://www.bing.com/news/search?format=rss&q=' + encodeURIComponent(words.join(' ')), { headers: BROWSER, signal: AbortSignal.timeout(20000) })).text();
@@ -241,8 +243,8 @@ async function storyPhotos(title, gemini, dir, avoid, first) {
     for (const { b } of items) {
       let link = b.link; const m = link.match(/[?&]url=([^&]+)/); if (m) link = decodeURIComponent(m[1]);
       let outlet = b.source || ''; try { outlet = outlet || new URL(link).hostname.replace(/^www\./, ''); } catch (e) {}
-      const ph = await articlePhoto(link, outlet, dir, gemini, title, false); if (!ph || avoid.includes(path.basename(ph.file))) { storyPhotos.last.push('no usable lead photo: ' + outlet + ' ' + JSON.stringify(articlePhoto.last || '').slice(0, 160)); continue; }
-      const v = await gemini({ system: 'You check photos for a Kenyan news Page. Output only JSON.', user: `Story: "${title}". This is the lead photo of another outlet's report, titled "${b.title}". Approve only if it is a real photograph of THIS story's own person, people or scene (not a stock or unrelated picture), sharp enough for a poster, with no outlet logo, watermark or caption text left on it, and nobody dead or injured shown. Return JSON {"ok":true|false,"why":"few words"}`, audio: { mime: 'image/jpeg', data: fs.readFileSync(ph.file).toString('base64') } }).catch(() => null);
+      const ph = await articlePhoto(link, outlet, dir, gemini, title, sensitive); if (!ph || avoid.includes(path.basename(ph.file))) { storyPhotos.last.push('no usable lead photo: ' + outlet + ' ' + JSON.stringify(articlePhoto.last || '').slice(0, 160)); continue; }
+      const v = await gemini({ system: 'You check photos for a Kenyan news Page. Output only JSON.', user: `Story: "${title}". This is the lead photo of another outlet's report, titled "${b.title}". Approve only if it is a real photograph of THIS story's own person, people or scene (not a stock or unrelated picture), sharp enough for a poster, with no outlet logo, watermark or caption text left on it, and nobody dead or injured shown.${sensitive ? ' This is a crime, court or death story: REFUSE any photo of a private suspect, accused person, victim or relative (a mugshot or ID photo included); only public officials, police, a court building or the place are allowed.' : ''} Return JSON {"ok":true|false,"why":"few words"}`, audio: { mime: 'image/jpeg', data: fs.readFileSync(ph.file).toString('base64') } }).catch(() => null);
       storyPhotos.last.push(outlet + ': ' + JSON.stringify(v));
       if (v && v.ok === true) return ph;
       try { fs.unlinkSync(ph.file); } catch (e) {}
