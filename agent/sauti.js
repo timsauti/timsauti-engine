@@ -227,6 +227,26 @@ async function leaderBank(name, gemini, want) {
   return have();
 }
 // a leader missing from the photo bank: take the lead photo of a recent news report about them, check it shows that one person, and keep it in the bank
+// owner, 13 Nov ("why not use the Bungoma boy's photo?"): before any stock photo, look for the story's OWN photo in other outlets'
+// reports of the same story. Each lead photo is checked to show this story's person or scene, and another outlet's logo is cut away.
+async function storyPhotos(title, gemini, dir, avoid) {
+  if (!title || !gemini) return null; avoid = avoid || [];
+  try {
+    const words = String(title).replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 3).slice(0, 9);
+    const xml = await (await fetch('https://www.bing.com/news/search?format=rss&q=' + encodeURIComponent(words.join(' ')), { headers: BROWSER, signal: AbortSignal.timeout(20000) })).text();
+    const key = words.map((w) => w.toLowerCase());
+    const items = parseRss(xml).map((b) => ({ b, score: key.filter((w) => b.title.toLowerCase().includes(w)).length })).filter((x) => x.score >= Math.min(3, key.length)).sort((a, b) => b.score - a.score).slice(0, 6);
+    for (const { b } of items) {
+      let link = b.link; const m = link.match(/[?&]url=([^&]+)/); if (m) link = decodeURIComponent(m[1]);
+      let outlet = b.source || ''; try { outlet = outlet || new URL(link).hostname.replace(/^www\./, ''); } catch (e) {}
+      const ph = await articlePhoto(link, outlet, dir, gemini, title, false); if (!ph || avoid.includes(path.basename(ph.file))) continue;
+      const v = await gemini({ system: 'You check photos for a Kenyan news Page. Output only JSON.', user: `Story: "${title}". This is the lead photo of another outlet's report, titled "${b.title}". Approve only if it is a real photograph of THIS story's own person, people or scene (not a stock or unrelated picture), sharp enough for a poster, with no outlet logo, watermark or caption text left on it, and nobody dead or injured shown. Return JSON {"ok":true|false,"why":"few words"}`, audio: { mime: 'image/jpeg', data: fs.readFileSync(ph.file).toString('base64') } }).catch(() => null);
+      if (v && v.ok === true) return ph;
+      try { fs.unlinkSync(ph.file); } catch (e) {}
+    }
+  } catch (e) {}
+  return null;
+}
 async function leaderFromNews(name, gemini) {
   name = String(name || '').trim(); if (name.split(/\s+/).length < 2 || !gemini) return null;
   const dir = path.join(__dirname, '..', 'data', 'leaders'); fs.mkdirSync(dir, { recursive: true });
@@ -780,4 +800,4 @@ Return JSON: {"topic":"three to six words","label":"POLITICS or LEADERSHIP or EC
     photo: photo ? path.relative(path.join(dir, '..', '..'), photo.file) : null, photoCredit: photo ? photo.credit : '' };
 }
 
-module.exports = { leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };
+module.exports = { storyPhotos, leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };

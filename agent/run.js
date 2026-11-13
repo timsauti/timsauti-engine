@@ -323,7 +323,7 @@ TODAY IS ${new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10)} (Nairo
 FAIL it if ANY of these is true:
 0. It presents something already past as current or coming: a forecast, event, deadline, exam date or period that ended before today, or old news told as new.
 1. The poster looks broken: mostly empty, an unintended black or white area, a box or shape covering part of it, or a picture that is a map, chart, diagram or drawing. (Every poster must carry a real photograph: a poster with no photo fails.)
-2. The poster photo does not fit the story, or shows dead or injured people.
+2. The poster photo does not fit the story, or shows dead or injured people. Be strict: the photo must show this story's own person, people, place or a scene of the very thing reported. A general picture (a campus, a building, a sculpture, a landscape, a fire or a vehicle from somewhere else) does NOT fit a story about a particular person, a crime, a donation, a death or any human story; FAIL it.
 3. The poster text is hard to read or cut off.
 4. The post text is vague or incomplete: a news story that does not say who, what and where (for national stories, "Kenya" or "across the country" is enough); filler sentences with no facts; or it ends abruptly.
 5. The text and the poster are about different things.
@@ -365,7 +365,10 @@ async function sautiNewsNow(page, posts, notes) {
     const qc = await finalCheck(page, post);
     if (!qc.pass && post.sauti && post.sauti.photo && /photo|picture|image|logo|watermark/i.test((qc.problems || []).join(' '))) {   // a wrong photo: try once more as a clean text poster
       audit('sauti', { event: 'photo_changed_by_final_check', id: post.id, problems: qc.problems });
-      post.sauti.avoid = (post.sauti.avoid || []).concat(path.basename(post.sauti.photo)); post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null; post.image = design(page, post, posts); save(page.key, posts);
+      post.sauti.avoid = (post.sauti.avoid || []).concat(path.basename(post.sauti.photo)); post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null;
+      const own = await SAUTI.storyPhotos(post.headline || (item && item.title), gemini, path.join(ROOT, 'data', 'sauti'), post.sauti.avoid).catch(() => null);
+      if (own) { post.sauti.photo = path.relative(ROOT, own.file); post.sauti.credit = own.credit || ''; post.sauti.ownPhoto = true; audit('sauti', { event: 'story_photo_from_other_report', id: post.id }); }
+      post.image = design(page, post, posts); save(page.key, posts);
       Object.assign(qc, await finalCheck(page, post));
     }
     // owner, 11 Nov: a breaking or trending story is not dropped because no exact photo exists. It goes out with a closely related photo from the
@@ -375,7 +378,7 @@ async function sautiNewsNow(page, posts, notes) {
     const bankPhotoOn = () => /c_topic_/.test(String((post.sauti || {}).photo || '')) && !!(post.sauti || {}).photoFits;   // owner, 12 Nov: related means the same subject (a maize story gets a farm photo, never a city skyline)
     if (!qc.pass && urgentStory && onlyPhotoFit(qc.problems)) {
       if (bankPhotoOn()) { post.sauti.avoid = (post.sauti.avoid || []).concat(path.basename(post.sauti.photo)); post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null; post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); }
-      if (!qc.pass && onlyPhotoFit(qc.problems) && bankPhotoOn()) { audit('sauti', { event: 'posted_with_related_photo', id: post.id, photo: post.sauti.photo, note: qc.problems }); qc.pass = true; }
+      // owner, 13 Nov: a photo that does not fit is never waved through any more; the story waits instead
     }
     if (!qc.pass) { post.status = 'REJECTED_QC'; post.qc = qc.problems; audit('sauti', { event: 'rejected_by_final_check', id: post.id, problems: qc.problems }); save(page.key, posts); if (++rejects <= 6) i--; continue; }
     try {
