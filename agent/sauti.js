@@ -258,7 +258,7 @@ const TOPIC_RULES = [['court', /\b(court|judge|jailed|sentenc|convict|charged|ma
   ['weather', /\b(rain|flood|weather|Met\b|storm|lightning|drought|forecast|landslide)/i], ['farming', /\b(farm|maize|crop|harvest|fertili|seed|livestock|agricultur|coffee|tea\b|miraa)/i],
   ['water', /\b(water|dam\b|dams\b|borehole|irrigation)/i], ['sports', /\b(athlet|marathon|football|Harambee Stars|sport|match|league|Olympic|runner)/i],
   ['technology', /\b(phone|M-Pesa|Safaricom|internet|tech|AI\b|digital|online|app\b|cyber)/i], ['faith', /\b(church|pastor|worship|gospel|bishop|mosque|faith|prayer|priest)/i],
-  ['fire', /\b(fire|blaze|razed|burnt)/i], ['transport', /\b(road|accident|matatu|traffic|highway|crash|bus\b|transport|NTSA|KeNHA|boda)/i],
+  ['fire', /\b(fires?|blaze|blazes|razed|burnt|inferno|gutted|engulfed|firefighters?)\b/i], ['transport', /\b(road|accident|matatu|traffic|highway|crash|bus\b|transport|NTSA|KeNHA|boda)/i],
   ['economy', /\b(shilling|economy|tax|KRA|budget|price|inflation|bank|loan|debt|Treasury|salar|money|fund|billion|million)/i], ['business', /\b(business|trader|market|shop|jobs|employ|company|investor)/i],
   ['ukambani', /\b(Machakos|Kitui|Makueni|Ukambani|Kangundo|Mwala|Mwingi|Wote|Kathiani|Matungulu|Masinga|Yatta|Mavoko)/i], ['nairobi', /\bNairobi\b/i],
   ['politics', /\b(UDA|ODM|MP\b|MPs|senator|governor|president|election|IEBC|party|politic|parliament|MCA|Wiper|aspirant)/i], ['government', /\b(government|Cabinet|CS\b|PS\b|ministry|State House|civil servant|county)/i]];
@@ -280,7 +280,9 @@ function topicPhoto(text, dir, opts) {
     const ago = o.ago || recentUse(dir); const avoid = new Set((o.avoid || []).map((x) => String(x).replace(/^c_topic_/, '')));
     const since = (p) => { const v = ago['c_topic_' + p.file]; return v === undefined ? Infinity : v; };
     const pool = (t) => (idx[t] || []).filter((p) => !avoid.has(p.file));
-    const matched = TOPIC_RULES.filter(([t, re]) => re.test(text)).map(([t]) => t);   // every topic the story touches, the main one first
+    // owner, 13 Nov (a pistol arrest went out on a bush fire photo): a gun story is never a fire story ("firearm", "opened fire", "shots fired")
+    const gun = /\b(guns?|pistols?|firearms?|rifles?|shot|shooting|opened fire|fired|bullets?|ammunition|gunm[ae]n)\b/i.test(text);
+    const matched = TOPIC_RULES.filter(([t, re]) => re.test(text) && !(t === 'fire' && gun)).map(([t]) => t);   // every topic the story touches, the main one first
     const general = ['government', 'nairobi', 'business', 'economy', 'politics'].filter((t) => !matched.includes(t));
     const fresh = (t) => pool(t).filter((p) => since(p) >= NO_REPEAT);
     const oldest = (ts, gap) => ts.flatMap((t) => pool(t).map((p) => [p, t])).filter(([p]) => since(p) >= gap).sort((x, y) => since(y[0]) - since(x[0]))[0];
