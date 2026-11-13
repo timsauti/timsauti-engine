@@ -277,7 +277,12 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const tk = process.env.TELEGRAM_BOT_TOKEN, ow = process.env.TELEGRAM_OWNER_ID;
     const r = await fetch(`https://api.telegram.org/bot${tk}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: ow, text: TARGET || 'Agent check: Telegram is working.' }) });
     const j = await r.json().catch(() => ({}));
-    fs.writeFileSync(path.join(ROOT, 'data', 'tg_test.json'), JSON.stringify({ at: new Date().toISOString(), ownerSet: !!ow, ok: j.ok, error: j.ok ? null : String(j.description || r.status).slice(0, 200) }, null, 1)); console.log(j.ok ? 'sent' : 'failed');
+    // which bot this key belongs to, and who has written to it lately (read only, nothing marked read), so a wrong key or ID shows at once
+    const me = await (await fetch(`https://api.telegram.org/bot${tk}/getMe`)).json().catch(() => ({}));
+    const up = await (await fetch(`https://api.telegram.org/bot${tk}/getUpdates?timeout=0`)).json().catch(() => ({}));
+    const senders = [...new Set((up.result || []).map((u) => { const m = u.message || (u.callback_query && u.callback_query.message) || {}; const f = u.message ? u.message.from : (u.callback_query || {}).from; return f ? f.id + ' ' + (f.first_name || '') : null; }).filter(Boolean))];
+    const ownerLooksLike = String(ow || '').replace(/[0-9]/g, '#');
+    fs.writeFileSync(path.join(ROOT, 'data', 'tg_test.json'), JSON.stringify({ at: new Date().toISOString(), ownerSet: !!ow, ownerShape: ownerLooksLike, bot: me.ok ? '@' + me.result.username : 'key not accepted', recentSenders: senders, ok: j.ok, error: j.ok ? null : String(j.description || r.status).slice(0, 200) }, null, 1)); console.log(j.ok ? 'sent' : 'failed');
   } else if (ACTION === 'probe') {
     // read only checks of what this Page key can do; no changes are made
     const get = async (u) => { const r = await fetch(`https://graph.facebook.com/${GV}/${u}`, { headers: auth, signal: AbortSignal.timeout(60000) }); const j = await r.json().catch(() => ({})); return { ok: r.ok, j }; };
