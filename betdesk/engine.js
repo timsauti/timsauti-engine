@@ -55,6 +55,68 @@ async function footballData(comp) {
   }));
 }
 
+// owner, 13 Nov: a wider spread of leagues. Free results and fixtures from football-data.co.uk: the season file of each league
+// (all results so far) and its weekly list of coming fixtures. Teams are matched to the odds service by name, as for the others.
+const CSV_MAIN = [
+  { div: 'E1', name: 'League One', odds: ['england', 'league one'], allow: 1 },
+  { div: 'E2', name: 'League Two', odds: ['england', 'league two'], allow: 1 },
+  { div: 'SC0', name: 'Scottish Premiership', odds: ['scotland', 'premiership'] },
+  { div: 'D2', name: '2. Bundesliga', odds: ['germany', '2. bundesliga'], allow: 1 },
+  { div: 'I2', name: 'Serie B', odds: ['italy', 'serie b'], allow: 1 },
+  { div: 'SP2', name: 'Segunda Division', odds: ['spain', 'segunda|laliga2|laliga 2|hypermotion'], allow: 1 },
+  { div: 'F2', name: 'Ligue 2', odds: ['france', 'ligue 2'], allow: 1 },
+  { div: 'B1', name: 'Belgian Pro League', odds: ['belgium', 'pro league|first division a'] },
+  { div: 'T1', name: 'Turkish Super Lig', odds: ['turkey|turkiye|türkiye', 'super lig|süper lig'] },
+  { div: 'G1', name: 'Greek Super League', odds: ['greece', 'super league'] },
+];
+const CSV_NEW = [
+  { code: 'USA', country: 'USA', name: 'MLS', odds: ['usa', 'mls'] },
+  { code: 'MEX', country: 'Mexico', name: 'Liga MX', odds: ['mexico', 'liga mx'] },
+  { code: 'ARG', country: 'Argentina', name: 'Argentina Primera', odds: ['argentina', 'liga profesional|primera division'] },
+  { code: 'JPN', country: 'Japan', name: 'J1 League', odds: ['japan', 'j1|j.league|j league'] },
+  { code: 'AUT', country: 'Austria', name: 'Austrian Bundesliga', odds: ['austria', 'bundesliga'] },
+  { code: 'SWZ', country: 'Switzerland', name: 'Swiss Super League', odds: ['switzerland', 'super league'] },
+  { code: 'DNK', country: 'Denmark', name: 'Danish Superliga', odds: ['denmark', 'superliga'] },
+  { code: 'POL', country: 'Poland', name: 'Ekstraklasa', odds: ['poland', 'ekstraklasa'] },
+];
+function csvRows(text) {
+  const lines = String(text || '').replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const head = lines[0].split(',').map((h) => h.trim());
+  return lines.slice(1).map((l) => { const v = l.split(','); const o = {}; head.forEach((h, i) => (o[h] = (v[i] || '').trim())); return o; });
+}
+function csvDate(d, t) {   // dd/mm/yy or dd/mm/yyyy, UK clock
+  const m = String(d || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/); if (!m) return 0;
+  const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]); const [hh, mm] = String(t || '15:00').split(':').map(Number);
+  const mo = Number(m[2]); const bst = mo >= 4 && mo <= 10 ? 36e5 : 0;   // British summer time, close enough for kickoffs
+  return Date.UTC(y, mo - 1, Number(m[1]), hh || 15, mm || 0) - bst;
+}
+function csvMatch(r, name, upcoming) {
+  const home = r.HomeTeam || r.Home, away = r.AwayTeam || r.Away; if (!home || !away) return null;
+  const date = csvDate(r.Date, r.Time); if (!date) return null;
+  const hg = r.FTHG !== undefined ? r.FTHG : r.HG, ag = r.FTAG !== undefined ? r.FTAG : r.AG;
+  const done = !upcoming && hg !== '' && hg !== undefined && ag !== '' && ag !== undefined;
+  return { key: `csv:${name}:${date}:${home}`, league: name, date, hid: 'csv:' + home, aid: 'csv:' + away, home, away, homeFull: home, awayFull: away,
+    hg: done ? Number(hg) : null, ag: done ? Number(ag) : null, finished: done, upcoming: !!upcoming && date > NOW };
+}
+async function csvLeagues() {
+  const out = []; const y = new Date(NOW).getUTCMonth() >= 6 ? new Date(NOW).getUTCFullYear() : new Date(NOW).getUTCFullYear() - 1;
+  const season = String(y % 100).padStart(2, '0') + String((y + 1) % 100).padStart(2, '0');
+  const base = 'https://www.football-data.co.uk/';
+  const get = async (u) => { try { return await http({ url: base + u, json: false }); } catch (e) { notes.push(`League file ${u}: unavailable (${String(e.message).slice(0, 60)})`); return ''; } };
+  const fx = csvRows(await get('fixtures.csv')), nfx = csvRows(await get('new_league_fixtures.csv'));
+  for (const c of CSV_MAIN) {
+    for (const r of csvRows(await get(`mmz4281/${season}/${c.div}.csv`))) { const m = csvMatch(r, c.name, false); if (m && m.finished) out.push(m); }
+    for (const r of fx.filter((x) => x.Div === c.div)) { const m = csvMatch(r, c.name, true); if (m) out.push(m); }
+  }
+  const since = NOW - 400 * 864e5;
+  for (const c of CSV_NEW) {
+    for (const r of csvRows(await get(`new/${c.code}.csv`))) { const m = csvMatch(r, c.name, false); if (m && m.finished && m.date > since) out.push(m); }
+    for (const r of nfx.filter((x) => x.Country === c.country || x.Country === c.code)) { const m = csvMatch(r, c.name, true); if (m) out.push(m); }
+  }
+  return out;
+}
+
 async function kenyaPremierLeague() {
   const H = { 'x-apisports-key': S.apiFootballKey };
   let lg = store.cache.kpl;
@@ -174,15 +236,15 @@ const op = async (p, qs) => { oddsCalls++; const r = await http({ url: 'https://
 
 async function tournamentIds() {
   const t = store.cache.tours;
-  if (t && t.v === 4 && NOW - t.at < 14 * 864e5) return t.byLeague;
+  if (t && t.v === 5 && NOW - t.at < 14 * 864e5) return t.byLeague;
   const list = await op('/tournaments', { sportId: 10 });
   const byLeague = {};
-  for (const c of FD_COMPS) {
-    const hit = (list || []).filter((x) => { const j = JSON.stringify(x).toLowerCase(); return c.odds.every((w) => j.includes(w)) && !/women|u19|u21|u23|youth|u20|2\.|second|cup|serie b|liga 2|playoff/.test(String(x.tournamentName || '').toLowerCase()); })
+  for (const c of FD_COMPS.concat(CSV_MAIN, CSV_NEW)) {
+    const hit = (list || []).filter((x) => { const j = JSON.stringify(x).toLowerCase(), tn = String(x.tournamentName || '').toLowerCase(); return c.odds.every((w) => w.split('|').some((alt) => j.includes(alt))) && !/women|u19|u21|u23|youth|u20|cup|playoff|reserve/.test(tn) && (c.allow || !/2\.|second|serie b|liga 2/.test(tn)); })
       .sort((a, b) => (b.futureFixtures || 0) - (a.futureFixtures || 0))[0];
     if (hit) byLeague[c.name] = hit.tournamentId;
   }
-  store.cache.tours = { byLeague, at: NOW, v: 4 };
+  store.cache.tours = { byLeague, at: NOW, v: 5 };
   return byLeague;
 }
 let fixtureNames = null;
@@ -292,6 +354,7 @@ for (const c of FD_COMPS) {
   try { all = all.concat(await footballData(c)); } catch (e) { notes.push(`${c.name}: data unavailable (${String(e.message).slice(0, 80)})`); }
   await sleep(6500); // football-data.org free tier allows 10 calls a minute
 }
+try { const extra = await csvLeagues(); all = all.concat(extra); if (S.debug) notes.push(`More leagues: ${extra.length} games (${extra.filter((m) => m.upcoming).length} coming)`); } catch (e) { notes.push(`More leagues: unavailable (${String(e.message).slice(0, 80)})`); }
 if (S.includeKenyanLeague !== false && S.apiFootballKey) {
   try { all = all.concat(await kenyaPremierLeague()); } catch (e) { notes.push(`Kenyan Premier League: unavailable on this key (${String(e.message).slice(0, 90)})`); }
 }
