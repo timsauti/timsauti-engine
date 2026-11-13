@@ -207,6 +207,18 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       } catch (e) { console.log(q + ': ' + e.message); }
     }
     console.log('hope photos: ' + Object.keys(idx).length);
+  } else if (ACTION === 'grabimg') {
+    // TARGET = one article link: saves its main photos (no checks) to data/grab/ so the owner's chosen photo can be prepared by hand
+    const UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36', accept: 'text/html,image/avif,image/webp,image/jpeg,*/*' };
+    const dir = path.join(ROOT, 'data', 'grab'); fs.mkdirSync(dir, { recursive: true }); const got = [];
+    const h = await (await fetch(TARGET, { headers: UA, signal: AbortSignal.timeout(30000) })).text();
+    const urls = [...h.matchAll(/(?:content|src|data-src|srcset)="([^" ]+\.(?:jpe?g|webp|png)[^" ]*)/gi)].map((x) => { try { return new URL(x[1].replace(/&amp;/g, '&'), TARGET).href; } catch (e) { return null; } }).filter(Boolean);
+    for (const u of [...new Set(urls)].slice(0, 30)) {
+      if (got.length >= 10 || /logo|icon|avatar|favicon|sprite/i.test(u)) continue;
+      try { const r = await fetch(u, { headers: { ...UA, referer: TARGET }, signal: AbortSignal.timeout(30000) }); if (!r.ok) continue; const b = Buffer.from(await r.arrayBuffer()); if (b.length < 25000) continue;
+        const f = 'g' + got.length + (/\.png/i.test(u) ? '.png' : /\.webp/i.test(u) ? '.webp' : '.jpg'); fs.writeFileSync(path.join(dir, f), b); got.push({ f, u: u.slice(0, 200), size: b.length }); } catch (e) {}
+    }
+    fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ at: new Date().toISOString(), from: TARGET, got }, null, 1)); console.log('saved ' + got.length);
   } else if (ACTION === 'grabsite') {
     // TARGET = a website: saves its logo and photos to data/<page>/site/ (used for a client's own posters)
     const UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36' };
