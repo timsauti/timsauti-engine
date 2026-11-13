@@ -153,12 +153,15 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     // owner video: data/<page>/videos/<TARGET>.mp4 with its text in <TARGET>.txt, posted now as a Page video
     const dir = path.join(ROOT, 'data', PAGE, 'videos'); const file = path.join(dir, TARGET + '.mp4');
     const text = fs.readFileSync(path.join(dir, TARGET + '.txt'), 'utf8').trim();
-    const fd = new FormData(); fd.append('source', new Blob([fs.readFileSync(file)], { type: 'video/mp4' }), TARGET + '.mp4'); fd.append('description', text); fd.append('published', 'true');
+    const fd = new FormData(); fd.append('source', new Blob([fs.readFileSync(file)], { type: 'video/mp4' }), TARGET + '.mp4'); fd.append('description', text);
+    // a <TARGET>.at file holds a publish time (ISO); Facebook then releases the video itself at that time
+    let at = 0; try { at = Date.parse(fs.readFileSync(path.join(dir, TARGET + '.at'), 'utf8').trim()); } catch (e) {}
+    if (at && at > Date.now() + 11 * 60000) { fd.append('published', 'false'); fd.append('scheduled_publish_time', String(Math.floor(at / 1000))); } else fd.append('published', 'true');
     const r = await fetch(`https://graph-video.facebook.com/${GV}/${page.pageId}/videos`, { method: 'POST', headers: auth, body: fd, signal: AbortSignal.timeout(300000) });
     const j = await r.json().catch(() => ({}));
     audit({ event: r.ok && j.id ? 'owner_video_posted' : 'owner_video_failed', target: TARGET, videoId: j.id || null, error: r.ok ? null : mask(JSON.stringify(j)).slice(0, 300) });
     const pf = path.join(ROOT, 'data', PAGE, 'posts.json'); const posts = JSON.parse(fs.readFileSync(pf, 'utf8'));
-    if (r.ok && j.id) { posts.push({ id: 'p_vid_' + TARGET, page: PAGE, category: 'OWNER', owner: true, headline: text.split('\n')[0].slice(0, 120), caption: text, status: 'PUBLISHED', publishedAt: new Date().toISOString(), fb: { videoId: j.id, kind: 'video' }, permalink: 'https://www.facebook.com/' + j.id, firstComment: { skipped: 'owner video' } }); fs.writeFileSync(pf, JSON.stringify(posts, null, 1)); }
+    if (r.ok && j.id) { posts.push({ id: 'p_vid_' + TARGET, page: PAGE, category: 'OWNER', owner: true, headline: text.split('\n')[0].slice(0, 120), caption: text, status: 'PUBLISHED', publishedAt: new Date(at && at > Date.now() ? at : Date.now()).toISOString(), fb: { videoId: j.id, kind: 'video' }, permalink: 'https://www.facebook.com/' + j.id, firstComment: { skipped: 'owner video' } }); fs.writeFileSync(pf, JSON.stringify(posts, null, 1)); }
     console.log(r.ok ? 'posted ' + j.id : 'failed ' + mask(JSON.stringify(j)).slice(0, 300));
   } else if (ACTION === 'models') {
     // read only: which Gemini models this key can use, and a one word test of each
