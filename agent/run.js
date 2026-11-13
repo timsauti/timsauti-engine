@@ -295,6 +295,30 @@ function sautiPace(posts, notes) {
 }
 // ---------- final editor check: every post is looked at (picture and words together) before it goes out ----------
 // Fails closed: if the check cannot run, nothing is posted.
+// owner, 13 Nov ("correct this once and for all"): one focused question, asked of the PHOTO ALONE (not the poster with its headline,
+// which makes almost any picture look fitting): does this picture show this story's own person, place or thing? 1 to 5.
+// A stock photo needs 4 or 5 (the same kind of place or thing as the story, e.g. a court building for a court case); the story's own
+// photo, a leader's photo or the owner's photo needs 3. Anything lower never goes out: the story waits.
+async function photoMatch(post) {
+  const s = post.sauti || {}; if (!s.photo) return { ok: false, score: 0, why: 'no photo' };
+  if (/[\\/]o_|owner_/.test(s.photo) || post.owner) return { ok: true, score: 5, why: 'owner supplied' };
+  const stock = /c_topic_|[\\/]topics[\\/]/.test(s.photo);
+  let b64; try { b64 = fs.readFileSync(path.join(ROOT, s.photo)).toString('base64'); } catch (e) { return { ok: false, score: 0, why: 'photo missing' }; }
+  const story = String(post.caption || '').replace(/\s+/g, ' ').slice(0, 600);
+  try {
+    const v = await gemini({ system: 'You are a strict picture editor at a Kenyan newsroom. You never let a misleading picture run. Output only JSON.',
+      user: `Headline: "${post.headline}". Story: "${story}".
+Look ONLY at this photograph. Would a reader looking at it with the headline feel it truly shows this story? Score:
+5 = it shows this story's own person, people, place or event.
+4 = it shows exactly the same kind of thing the story is about, in a Kenyan setting (a court building for a court case, a police vehicle or officers for an arrest, a maize field for a maize pest, a matatu or road for a road story, a hospital for a health story), with nothing that contradicts the story.
+3 = it shows something in the same broad area only.
+2 or 1 = it shows something else (a campus for a sick child, a bush fire for a gun arrest, a skyline for farming), or it could mislead.
+Also 1 if it shows a different named person than the story is about. Return JSON {"score":1-5,"shows":"what the photo shows, in a few words","why":"few words"}`,
+      audio: { mime: 'image/jpeg', data: b64 } });
+    const sc = Number(v && v.score) || 0;
+    return { ok: sc >= (stock ? 4 : 3), score: sc, why: String((v && (v.shows + ': ' + v.why)) || '').slice(0, 160) };
+  } catch (e) { return { ok: false, score: 0, why: 'photo test could not run' }; }
+}
 async function finalCheck(page, post) {
   // engagement bait lines (asking people to comment, share or tag) are removed: Facebook cuts reach for them
   post.caption = String(post.caption || '').split('\n').filter((l) => !X.BAIT.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -305,6 +329,10 @@ async function finalCheck(page, post) {
   if (/found unique ways|has been doing great|various ways|many things/i.test(cap)) problems.push('vague filler');
   if (page.key === 'sauti' && !(post.sauti && post.sauti.photo)) problems.push('poster has no photo (owner rule: no graphic without a photo)');
   if (problems.length) return { pass: false, problems };
+  if (page.key === 'sauti' && post.sauti && post.sauti.photo) {
+    const pm = await photoMatch(post); post.sauti.photoScore = pm.score;
+    if (!pm.ok) return { pass: false, problems: [`poster photo does not fit the story (picture test ${pm.score} of 5: ${pm.why})`] };
+  }
   let img; try { img = fs.readFileSync(path.join(ROOT, post.image.file)).toString('base64'); } catch (e) { return { pass: false, problems: ['no poster'] }; }
   // a photo poster that came out mostly pure black or pure white is broken (a photo that failed to draw)
   if ((post.sauti && post.sauti.photo) || (page.key === 'makasa' && !post.wit)) {
@@ -799,7 +827,7 @@ async function watchdog() {
   if (alerts.length) await telegram('AGENT ALERT\n\n' + alerts.join('\n\n'));
 }
 
-if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load };   // the self check loads the plan without running anything
+if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load, photoMatch };   // the self check loads the plan without running anything
 else (async () => {
   if (process.env.OWNER_TEST === '1') {   // owner check: prepare one owner photo post, send nothing, publish nothing
     delete process.env.TELEGRAM_BOT_TOKEN;

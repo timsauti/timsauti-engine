@@ -270,6 +270,12 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       const j = await r.json().catch(() => ({})); out.push(Object.keys(t)[0] + ' ' + r.status + ' ' + mask(JSON.stringify(j)).slice(0, 160)); if (r.ok) break;
     }
     audit({ event: 'hideobj', target: TARGET, results: out }); console.log(out.join('\n'));
+  } else if (ACTION === 'phototest') {
+    // TARGET = post ids separated by commas: runs the picture test on each and records the scores (nothing is posted)
+    process.env.SELFTEST = '1'; const R = require('./run');
+    const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'sauti', 'posts.json'), 'utf8')); const out = [];
+    for (const id of String(TARGET).split(',').map((x) => x.trim())) { const p = posts.find((x) => x.id === id); if (!p) continue; const q = JSON.parse(JSON.stringify(p)); q.owner = false; out.push({ id, headline: p.headline, photo: (p.sauti || {}).photo, result: await R.photoMatch(q) }); }
+    fs.writeFileSync(path.join(ROOT, 'data', 'photo_test.json'), JSON.stringify({ at: new Date().toISOString(), out }, null, 1)); console.log(out.length + ' tested');
   } else if (ACTION === 'storyphoto') {
     // TARGET = post id: finds that story's own photo in other outlets' reports (checked, logos cut away) and saves it beside the post
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
