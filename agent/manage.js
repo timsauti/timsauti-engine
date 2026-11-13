@@ -258,6 +258,13 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       const j = await r.json().catch(() => ({})); out.push(Object.keys(t)[0] + ' ' + r.status + ' ' + mask(JSON.stringify(j)).slice(0, 160)); if (r.ok) break;
     }
     audit({ event: 'hideobj', target: TARGET, results: out }); console.log(out.join('\n'));
+  } else if (ACTION === 'storyphoto') {
+    // TARGET = post id: finds that story's own photo in other outlets' reports (checked, logos cut away) and saves it beside the post
+    process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
+    const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'sauti', 'posts.json'), 'utf8')); const p = posts.find((x) => x.id === TARGET);
+    const ph = p ? await S.storyPhotos(p.headline, gem, path.join(ROOT, 'data', 'sauti'), []) : null;
+    fs.writeFileSync(path.join(ROOT, 'data', 'story_photo.json'), JSON.stringify({ at: new Date().toISOString(), id: TARGET, file: ph ? path.relative(ROOT, ph.file) : null, credit: ph ? ph.credit : null }, null, 1));
+    console.log(ph ? 'found ' + path.relative(ROOT, ph.file) : 'none');
   } else if (ACTION === 'leaderphoto') {
     // TARGET = one or more full names separated by commas: finds each leader's photo from recent news and keeps it in the photo bank
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
