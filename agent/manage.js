@@ -23,6 +23,15 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
   }
   if (!page.token) { console.log('missing token'); process.exit(1); }
   auth = { Authorization: 'Bearer ' + page.token };
+  if (ACTION === 'recaption') {
+    // TARGET = our post record id: replaces the live post's text with the record's current caption (for corrections)
+    const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', page.key, 'posts.json'), 'utf8')); const p = posts.find((x) => x.id === TARGET);
+    const pid = p && p.fb && (p.fb.postId || (p.fb.photoId && page.pageId + '_' + p.fb.photoId)); if (!pid) { console.log('no live post for ' + TARGET); process.exit(1); }
+    const body = new URLSearchParams({ message: p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' ') });
+    const r = await fetch(`https://graph.facebook.com/${GV}/${pid}`, { method: 'POST', headers: auth, body, signal: AbortSignal.timeout(60000) });
+    const j = await r.json().catch(() => ({})); console.log('recaption ' + r.status + ' ' + mask(JSON.stringify(j)).slice(0, 200));
+    audit({ event: 'recaptioned_by_owner_request', id: TARGET, ok: r.ok }); process.exit(r.ok ? 0 : 1);
+  }
   if (ACTION === 'hide' || ACTION === 'unhide') {
     const id = String(TARGET).trim(); if (!/^\d+_\d+$/.test(id) || !id.startsWith(page.pageId + '_')) { console.log('Post id must look like ' + page.pageId + '_123'); process.exit(1); }
     const tries = ACTION === 'hide' ? [{ is_published: 'false' }, { is_hidden: 'true' }, { timeline_visibility: 'hidden' }] : [{ is_published: 'true' }, { is_hidden: 'false' }, { timeline_visibility: 'normal' }];
