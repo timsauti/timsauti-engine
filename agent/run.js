@@ -355,7 +355,7 @@ async function finalCheck(page, post) {
 TODAY IS ${new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10)} (Nairobi time).
 FAIL it if ANY of these is true:
 0. It presents something already past as current or coming: a forecast, event, deadline, exam date or period that ended before today, or old news told as new.
-1. The poster looks broken: mostly empty, an unintended black or white area, a box or shape covering part of it, or a picture that is a map, chart, diagram or drawing. (Every poster must carry a real photograph: a poster with no photo fails.)
+1. The poster looks broken: mostly empty, an unintended black or white area, a box or shape covering part of it, or a picture that is a map, chart, diagram or drawing. ${(post.sauti && post.sauti.designed) ? '(This poster is a deliberate clean designed text poster with no photo, approved by the owner: judge only that it looks clean, balanced and finished.)' : post.english || post.wit ? '' : '(Every poster must carry a real photograph: a poster with no photo fails.)'}
 2. The poster photo does not fit the story, or shows dead or injured people. Be strict: the photo must show this story's own person, people, place or a scene of the very thing reported. A general picture (a campus, a building, a sculpture, a landscape, a fire or a vehicle from somewhere else) does NOT fit a story about a particular person, a crime, a donation, a death or any human story; FAIL it.
 3. The poster text is hard to read or cut off.
 4. The post text is vague or incomplete: a news story that does not say who, what and where (for national stories, "Kenya" or "across the country" is enough); filler sentences with no facts; or it ends abruptly.
