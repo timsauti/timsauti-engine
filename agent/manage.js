@@ -288,6 +288,9 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'sauti', 'posts.json'), 'utf8')); const out = [];
     for (const id of String(TARGET).split(',').map((x) => x.trim())) { const p = posts.find((x) => x.id === id); if (!p) continue; const q = JSON.parse(JSON.stringify(p)); q.owner = false; out.push({ id, headline: p.headline, photo: (p.sauti || {}).photo, result: await R.photoMatch(q) }); }
     fs.writeFileSync(path.join(ROOT, 'data', 'photo_test.json'), JSON.stringify({ at: new Date().toISOString(), out }, null, 1)); console.log(out.length + ' tested');
+  } else if (ACTION === 'oppnow') {
+    // runs today's Opportunity Desk search again now and sends what is new (owner request)
+    await require('../oppdesk/engine').tick({ tg: require('./tg'), force: true, log: console.log }); console.log('opportunity desk run done');
   } else if (ACTION === 'storyphoto') {
     // TARGET = post id: finds that story's own photo in other outlets' reports (checked, logos cut away) and saves it beside the post
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
