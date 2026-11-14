@@ -1,19 +1,157 @@
 [
-  { "name": "Government tenders portal (tenders.go.ke)", "type": "tenders", "url": "https://tenders.go.ke/api/active-tenders?perpage=60&title=", "words": ["training", "consultancy", "communication", "capacity", "media", "customer", "team building", "sensitization", "facilitation", "publicity"] },
-  { "name": "UNDP procurement notices (Kenya)", "type": "links", "url": "https://procurement-notices.undp.org/", "linkText": "UNDP-KEN" },
-  { "name": "United Nations in Kenya consultancies", "type": "links", "url": "https://kenya.un.org/en/jobs", "linkText": "consult" },
-  { "name": "KTDA tenders (tea factories)", "type": "links", "url": "https://ktdateas.com/tenders/" },
-  { "name": "Amref tenders", "type": "links", "url": "https://amref.org/tenders/", "linkText": "tender|proposal|consult|expression" },
-  { "name": "NGO Jobs in Africa (Kenya consultancies)", "type": "rss", "url": "https://ngojobsinafrica.com/?s=kenya+consultancy&feed=rss2" },
-  { "name": "NGO Jobs in Africa (terms of reference)", "type": "rss", "url": "https://ngojobsinafrica.com/?s=kenya+terms+of+reference&feed=rss2" },
-  { "name": "Jobweb Kenya consultancies", "type": "rss", "url": "https://jobwebkenya.com/job-category/consultancy/feed/" },
-  { "name": "MyJobMag Kenya consultancies", "type": "links", "url": "https://www.myjobmag.co.ke/jobs-by-field/consultancy", "linkHref": "/job/" },
-  { "name": "MyJobMag Kenya NGO roles", "type": "links", "url": "https://www.myjobmag.co.ke/jobs-by-field/ngo", "linkHref": "/job/", "linkText": "consult|trainer|facilitat|terms of reference" },
-  { "name": "Career Point Kenya", "type": "rss", "url": "https://www.careerpointkenya.co.ke/feed/", "must": "consult|trainer|facilitat" },
-  { "name": "BidDetail Kenya training tenders", "type": "links", "url": "https://www.biddetail.com/kenya-tenders/training-tenders" },
-  { "name": "Funds for NGOs", "type": "rss", "url": "https://www2.fundsforngos.org/feed/", "must": "kenya|east africa|sub.saharan|africa" },
-  { "name": "Google News: terms of reference", "type": "rss", "url": "https://news.google.com/rss/search?q=Kenya+consultancy+%22terms+of+reference%22+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en" },
-  { "name": "Google News: trainers and facilitators", "type": "rss", "url": "https://news.google.com/rss/search?q=Kenya+%28consultancy+OR+consultant%29+%28training+OR+facilitator+OR+trainer+OR+%22capacity+building%22%29+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en" },
-  { "name": "Google News: communications consultancies", "type": "rss", "url": "https://news.google.com/rss/search?q=Kenya+%28consultancy+OR+consultant%29+%28communications+OR+%22social+media%22+OR+%22public+relations%22+OR+documentary%29+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en" },
-  { "name": "Google News: ReliefWeb Kenya consultancies", "type": "rss", "url": "https://news.google.com/rss/search?q=site%3Areliefweb.int+Kenya+consultancy+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en" }
+ {
+  "name": "Government tenders portal (tenders.go.ke)",
+  "type": "tenders",
+  "url": "https://tenders.go.ke/api/active-tenders?perpage=60&title=",
+  "words": [
+   "training",
+   "consultancy",
+   "communication",
+   "capacity",
+   "media",
+   "customer",
+   "team building",
+   "sensitization",
+   "facilitation",
+   "publicity"
+  ]
+ },
+ {
+  "name": "UNDP procurement notices (Kenya)",
+  "type": "links",
+  "url": "https://procurement-notices.undp.org/",
+  "linkText": "UNDP-KEN"
+ },
+ {
+  "name": "United Nations in Kenya consultancies",
+  "type": "links",
+  "url": "https://kenya.un.org/en/jobs",
+  "linkText": "consult"
+ },
+ {
+  "name": "KTDA tenders (tea factories)",
+  "type": "links",
+  "url": "https://ktdateas.com/tenders/"
+ },
+ {
+  "name": "Amref tenders",
+  "type": "links",
+  "url": "https://amref.org/tenders/",
+  "linkText": "tender|proposal|consult|expression"
+ },
+ {
+  "name": "NGO Jobs in Africa (Kenya consultancies)",
+  "type": "rss",
+  "url": "https://ngojobsinafrica.com/?s=kenya+consultancy&feed=rss2"
+ },
+ {
+  "name": "NGO Jobs in Africa (terms of reference)",
+  "type": "rss",
+  "url": "https://ngojobsinafrica.com/?s=kenya+terms+of+reference&feed=rss2"
+ },
+ {
+  "name": "Jobweb Kenya consultancies",
+  "type": "rss",
+  "url": "https://jobwebkenya.com/job-category/consultancy/feed/"
+ },
+ {
+  "name": "MyJobMag Kenya consultancies",
+  "type": "links",
+  "url": "https://www.myjobmag.co.ke/jobs-by-field/consultancy",
+  "linkHref": "/job/"
+ },
+ {
+  "name": "MyJobMag Kenya NGO roles",
+  "type": "links",
+  "url": "https://www.myjobmag.co.ke/jobs-by-field/ngo",
+  "linkHref": "/job/",
+  "linkText": "consult|trainer|facilitat|terms of reference"
+ },
+ {
+  "name": "Career Point Kenya",
+  "type": "rss",
+  "url": "https://www.careerpointkenya.co.ke/feed/",
+  "must": "consult|trainer|facilitat"
+ },
+ {
+  "name": "BidDetail Kenya training tenders",
+  "type": "links",
+  "url": "https://www.biddetail.com/kenya-tenders/training-tenders"
+ },
+ {
+  "name": "Funds for NGOs",
+  "type": "rss",
+  "url": "https://www2.fundsforngos.org/feed/",
+  "must": "kenya|east africa|sub.saharan|africa"
+ },
+ {
+  "name": "Google News: terms of reference",
+  "type": "rss",
+  "url": "https://news.google.com/rss/search?q=Kenya+consultancy+%22terms+of+reference%22+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en"
+ },
+ {
+  "name": "Google News: trainers and facilitators",
+  "type": "rss",
+  "url": "https://news.google.com/rss/search?q=Kenya+%28consultancy+OR+consultant%29+%28training+OR+facilitator+OR+trainer+OR+%22capacity+building%22%29+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en"
+ },
+ {
+  "name": "Google News: communications consultancies",
+  "type": "rss",
+  "url": "https://news.google.com/rss/search?q=Kenya+%28consultancy+OR+consultant%29+%28communications+OR+%22social+media%22+OR+%22public+relations%22+OR+documentary%29+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en"
+ },
+ {
+  "name": "Google News: ReliefWeb Kenya consultancies",
+  "type": "rss",
+  "url": "https://news.google.com/rss/search?q=site%3Areliefweb.int+Kenya+consultancy+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en"
+ },
+ {
+  "name": "ReliefWeb jobs in Kenya",
+  "type": "rss",
+  "url": "https://reliefweb.int/jobs/rss.xml?search=kenya",
+  "must": "communicat|public relations|media|advocacy|marketing|trainer|training|facilitat|engagement|outreach"
+ },
+ {
+  "name": "MyJobMag Kenya marketing jobs",
+  "type": "links",
+  "url": "https://www.myjobmag.co.ke/jobs-by-field/marketing",
+  "linkHref": "/job/"
+ },
+ {
+  "name": "MyJobMag Kenya media jobs",
+  "type": "links",
+  "url": "https://www.myjobmag.co.ke/jobs-by-field/media",
+  "linkHref": "/job/"
+ },
+ {
+  "name": "BrighterMonday marketing and communications jobs",
+  "type": "links",
+  "url": "https://www.brightermonday.co.ke/jobs/marketing-communications",
+  "linkHref": "/listings/"
+ },
+ {
+  "name": "Jobweb Kenya communications jobs",
+  "type": "rss",
+  "url": "https://jobwebkenya.com/?s=communications&feed=rss2"
+ },
+ {
+  "name": "Jobweb Kenya marketing jobs",
+  "type": "rss",
+  "url": "https://jobwebkenya.com/?s=marketing&feed=rss2"
+ },
+ {
+  "name": "NGO Jobs in Africa (Kenya communications)",
+  "type": "rss",
+  "url": "https://ngojobsinafrica.com/?s=kenya+communications&feed=rss2"
+ },
+ {
+  "name": "Career Point Kenya (communications and marketing)",
+  "type": "rss",
+  "url": "https://www.careerpointkenya.co.ke/feed/",
+  "must": "communicat|marketing|public relations|media|brand|digital|advocacy"
+ },
+ {
+  "name": "Google News: county and public service vacancies",
+  "type": "rss",
+  "url": "https://news.google.com/rss/search?q=Kenya+vacancies+%28%22communications+officer%22+OR+%22public+relations%22+OR+%22corporate+communications%22+OR+%22marketing+officer%22%29+when%3A14d&hl=en-KE&gl=KE&ceid=KE:en"
+ }
 ]
