@@ -303,6 +303,25 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const ph = p ? await S.storyPhotos(p.headline, gem, path.join(ROOT, 'data', 'sauti'), [], p.source) : null;
     fs.writeFileSync(path.join(ROOT, 'data', 'story_photo.json'), JSON.stringify({ at: new Date().toISOString(), id: TARGET, file: ph ? path.relative(ROOT, ph.file) : null, credit: ph ? ph.credit : null, notes: S.storyPhotos.last }, null, 1));
     console.log(ph ? 'found ' + path.relative(ROOT, ph.file) : 'none');
+  } else if (ACTION === 'rescue') {
+    // owner, 14 Nov ("you should not kill stories"): TARGET = held post ids separated by commas. Each gets a photo of its place or
+    // institution, or else a clean designed poster, passes the final check, then is booked 40 minutes apart from 10 minutes from now.
+    process.env.SELFTEST = '1'; const S = require('./sauti'); const R = require('./run');
+    const file = path.join(ROOT, 'data', 'sauti', 'posts.json'); const posts = JSON.parse(fs.readFileSync(file, 'utf8')); const page = R.PAGES.find((x) => x.key === 'sauti');
+    const out = {}; let at = Date.now() + 10 * 60000;
+    for (const id of String(TARGET).split(',').map((x) => x.trim()).filter(Boolean)) {
+      const p = posts.find((x) => x.id === id); if (!p) { out[id] = 'not found'; continue; }
+      if (p.status === 'PUBLISHED') { out[id] = 'already published'; continue; }
+      p.sauti = p.sauti || {}; const avoid = (p.sauti.avoid || []).concat(p.sauti.photo ? [path.basename(p.sauti.photo)] : []); p.sauti.avoid = avoid;
+      const pl = await S.placePhoto(p.headline, p.caption, R.gemini, path.join(ROOT, 'data', 'sauti'), avoid).catch(() => null);
+      let qc = { pass: false };
+      if (pl) { p.sauti.photo = path.relative(ROOT, pl.file); p.sauti.credit = pl.credit || ''; p.sauti.wide = pl.wide || null; p.sauti.designed = false; if (!p.sauti.sub && pl.place) p.sauti.sub = pl.place; p.image = R.design(page, p, posts); qc = await R.finalCheck(page, p); }
+      let how = 'place photo';
+      if (!qc.pass) { how = 'designed poster'; p.sauti.photo = null; p.sauti.credit = ''; p.sauti.wide = null; p.sauti.designed = true; if (!p.sauti.sub && S.placePhoto.lastPlace) p.sauti.sub = S.placePhoto.lastPlace; p.image = R.design(page, p, posts); qc = await R.finalCheck(page, p); }
+      if (qc.pass) { p.status = 'READY'; p.scheduledAt = new Date(at).toISOString(); delete p.qc; at += 40 * 60000; out[id] = how + ', booked ' + p.scheduledAt; }
+      else { p.qc = qc.problems; out[id] = 'still held: ' + (qc.problems || []).join('; ').slice(0, 300); }
+    }
+    fs.writeFileSync(file, JSON.stringify(posts, null, 1)); fs.writeFileSync(path.join(ROOT, 'data', 'rescue.json'), JSON.stringify({ at: new Date().toISOString(), out }, null, 1)); console.log(JSON.stringify(out));
   } else if (ACTION === 'leaderphoto') {
     // TARGET = one or more full names separated by commas: finds each leader's photo from recent news and keeps it in the photo bank
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;

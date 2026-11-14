@@ -229,6 +229,41 @@ async function leaderBank(name, gemini, want) {
 // a leader missing from the photo bank: take the lead photo of a recent news report about them, check it shows that one person, and keep it in the bank
 // owner, 13 Nov ("why not use the Bungoma boy's photo?"): before any stock photo, look for the story's OWN photo in other outlets'
 // reports of the same story. Each lead photo is checked to show this story's person or scene, and another outlet's logo is cut away.
+// owner, 14 Nov: when no photo of the story itself exists, a real photo of the PLACE or INSTITUTION it happened at (free licence,
+// Wikimedia Commons), checked to show that very place. Also remembers the place line for a designed poster.
+async function placePhoto(title, caption, gemini, dir, avoid) {
+  placePhoto.lastPlace = '';
+  if (!gemini) return null; avoid = avoid || [];
+  let q = null;
+  try { q = await gemini({ system: 'You help a Kenyan news desk find photos. Output only JSON.', user: `Story headline: "${title}". Story: "${String(caption || '').slice(0, 700)}".
+Name the most specific real PLACE or INSTITUTION this story happened at or is about, as Wikimedia Commons search terms (for example "Kilungu", "Kenya Medical Training College", "Machakos People's Park", "Makueni County"). Never a person. Also give a short place line for a poster, like "Kilungu, Makueni County".
+Return JSON {"terms":["most specific","broader"],"place":"short place line"}` }); } catch (e) {}
+  if (!q || !Array.isArray(q.terms)) return null;
+  placePhoto.lastPlace = String(q.place || '').replace(/[^A-Za-z0-9 ,.'()]/g, '').slice(0, 48);
+  for (const term of q.terms.slice(0, 3)) {
+    try {
+      const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|size|mime&iiurlwidth=1400&gsrsearch=' + encodeURIComponent('filetype:bitmap ' + term);
+      const j = await (await fetch(u, { headers: UA, signal: AbortSignal.timeout(25000) })).json();
+      let tried = 0;
+      for (const pg of Object.values((j.query && j.query.pages) || {}).sort((a, b) => a.index - b.index)) {
+        if (tried >= 4) break; const ii = (pg.imageinfo || [])[0]; if (!ii || !ii.thumburl || ii.mime !== 'image/jpeg' || ii.width < 800) continue;
+        if (/map|logo|flag|coat of arms|seal|diagram|chart|document|signature/i.test(pg.title)) continue;
+        const md = ii.extmetadata || {}; const lic = String((md.LicenseShortName || {}).value || '').trim();
+        const free = /^(cc0|public domain|pd)/i.test(lic), by = /^cc[ -]by(-sa)?( \d|$)/i.test(lic); if (!free && !by) continue;
+        const artist = String((md.Artist || {}).value || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        const buf = Buffer.from(await (await fetch(ii.thumburl, { headers: UA, signal: AbortSignal.timeout(30000) })).arrayBuffer()); tried++;
+        const v = await gemini({ system: 'You are a strict picture editor. Output only JSON.', user: `Story: "${title}". This photo is titled "${pg.title}" on Wikimedia Commons. Does it clearly show ${term} itself (the very place or institution, recognisably), with no people's faces as the subject, no text overlays, nothing dead or injured? Return JSON {"ok":true|false,"why":"few words"}`, audio: { mime: 'image/jpeg', data: buf.toString('base64') } }).catch(() => null);
+        if (!v || v.ok !== true) continue;
+        const name = 'p_place_' + crypto.createHash('md5').update(pg.title).digest('hex').slice(0, 10) + '.jpg';
+        if (avoid.includes(name)) continue;
+        fs.mkdirSync(path.join(dir, 'photos'), { recursive: true }); const file = path.join(dir, 'photos', name); fs.writeFileSync(file, buf);
+        const d = imgDims(buf);
+        return { file, credit: free ? '' : `Photo: ${artist}, ${lic}`, wide: d && d.w / d.h >= 1.05 ? d : null, place: placePhoto.lastPlace };
+      }
+    } catch (e) {}
+  }
+  return null;
+}
 async function storyPhotos(title, gemini, dir, avoid, first) {
   if (!title || !gemini) return null; avoid = avoid || []; storyPhotos.last = [];
   // a crime, court or death story never shows a private suspect, victim or relative: only officials, police, a court or a place
@@ -805,4 +840,4 @@ Return JSON: {"topic":"three to six words","label":"POLITICS or LEADERSHIP or EC
     photo: photo ? path.relative(path.join(dir, '..', '..'), photo.file) : null, photoCredit: photo ? photo.credit : '' };
 }
 
-module.exports = { storyPhotos, leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };
+module.exports = { placePhoto, storyPhotos, leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };

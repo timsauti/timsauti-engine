@@ -170,8 +170,8 @@ function design(page, post, posts) {
     const s = post.sauti || {}; layout = 'sauti';
     // owner rule (3 Nov): nine in ten posts carry a photo; a story with no photo of its own takes a fitting photo from the topic bank
     // owner rule (4 Nov): no graphic without a photo. A named leader gets their own photo; anything else a fitting topic photo
-    if (!s.photo) { try { const bp = SAUTI.bankPhoto([s.card, post.headline].join(' '), dataDir('sauti')); if (bp && !(s.avoid || []).includes(path.basename(bp.file))) { s.photo = path.relative(ROOT, bp.file); s.credit = bp.credit || ''; s.wide = bp.wide || null; post.sauti = s; } } catch (e) {} }
-    if (!s.photo) {
+    if (!s.photo && !s.designed) { try { const bp = SAUTI.bankPhoto([s.card, post.headline].join(' '), dataDir('sauti')); if (bp && !(s.avoid || []).includes(path.basename(bp.file))) { s.photo = path.relative(ROOT, bp.file); s.credit = bp.credit || ''; s.wide = bp.wide || null; post.sauti = s; } } catch (e) {} }
+    if (!s.photo && !s.designed) {
       // owner rule (10 Nov): no photo over and over. The photo least recently on a poster wins, and one on the last 200 posters is not repeated while another fits
       const tp = SAUTI.topicPhoto([s.photoHint || '', s.label, s.card, post.headline, post.caption].join(' '), dataDir('sauti'), { ago: SAUTI.recentUse(dataDir('sauti'), posts.filter((q) => q !== post)), avoid: s.avoid || [] });
       if (tp) { s.photo = path.relative(ROOT, tp.file); s.credit = tp.credit; s.photoFits = !!tp.fits; post.sauti = s; }
@@ -332,7 +332,7 @@ async function finalCheck(page, post) {
   if (page.key === 'sauti' && post.fromNews && cap.length < 250) problems.push('story too thin');
   if (SWAHILI.test(cap)) problems.push('kiswahili');
   if (/found unique ways|has been doing great|various ways|many things/i.test(cap)) problems.push('vague filler');
-  if (page.key === 'sauti' && !post.english && !(post.sauti && post.sauti.photo)) problems.push('poster has no photo (owner rule: no graphic without a photo)');
+  if (page.key === 'sauti' && !post.english && !(post.sauti && (post.sauti.photo || post.sauti.designed))) problems.push('poster has no photo (owner rule: no graphic without a photo)');
   if (problems.length) return { pass: false, problems };
   if (page.key === 'sauti' && post.sauti && post.sauti.photo) {
     const pm = await photoMatch(post); post.sauti.photoScore = pm.score;
@@ -348,7 +348,7 @@ async function finalCheck(page, post) {
       if (flat > 0.5) return { pass: false, problems: ['poster photo did not draw (mostly blank)'] };
     } catch (e) {}
   }
-  const extra = post.english ? ' This is the English Corner: a deliberate clean white lesson card with no photo by design (the owner asked for it); do not fail it for having no photo, and check the English on it is correct.' : post.wit ? ' This is a deliberate text card (dark background, note paper, red circles), with no photo by design; do not fail it for having no photo.' : page.key === 'makasa' ? ' The photo is of the Page owner: his whole head and face must be fully in view, never cut at the top.' : '';
+  const extra = (post.sauti && post.sauti.designed) ? ' This is a deliberate clean designed news poster with no photo, used because no honest photo of this story exists (the owner prefers it to a misleading photo); do not fail it for having no photo.' : post.english ? ' This is the English Corner: a deliberate clean white lesson card with no photo by design (the owner asked for it); do not fail it for having no photo, and check the English on it is correct.' : post.wit ? ' This is a deliberate text card (dark background, note paper, red circles), with no photo by design; do not fail it for having no photo.' : page.key === 'makasa' ? ' The photo is of the Page owner: his whole head and face must be fully in view, never cut at the top.' : '';
   try {
     const v = await gemini({ system: 'You are the strict chief editor of a professional Kenyan Facebook Page. You approve only posts you would be proud to publish. Output only JSON.',
       user: `Check this ${page.name} post. The image is the poster that goes with it.${extra}
@@ -412,6 +412,19 @@ async function sautiNewsNow(page, posts, notes) {
     if (!qc.pass && urgentStory && onlyPhotoFit(qc.problems)) {
       if (bankPhotoOn()) { post.sauti.avoid = (post.sauti.avoid || []).concat(path.basename(post.sauti.photo)); post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null; post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); }
       // owner, 13 Nov: a photo that does not fit is never waved through any more; the story waits instead
+    }
+    // owner, 14 Nov ("you should not kill stories"): a good story is never dropped for want of a photo.
+    // 3) a real photo of the PLACE or INSTITUTION in the story (Kilungu, a KMTC campus, a county headquarters); 4) else a clean designed poster
+    //    with no photo at all, carrying the place line, which can never mislead. Faults other than the photo still stop the post.
+    if (!qc.pass && onlyPhotoFit(qc.problems)) {
+      const avoid = (post.sauti.avoid || []).concat(post.sauti.photo ? [path.basename(post.sauti.photo)] : []); post.sauti.avoid = avoid;
+      const pl = await SAUTI.placePhoto(post.headline, post.caption, gemini, path.join(ROOT, 'data', 'sauti'), avoid).catch(() => null);
+      if (pl) { post.sauti.photo = path.relative(ROOT, pl.file); post.sauti.credit = pl.credit || ''; post.sauti.wide = pl.wide || null; if (!post.sauti.sub && pl.place) post.sauti.sub = pl.place; post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); if (qc.pass) audit('sauti', { event: 'place_photo_used', id: post.id, place: pl.place }); }
+    }
+    if (!qc.pass && onlyPhotoFit(qc.problems)) {
+      const pl = SAUTI.placePhoto.lastPlace || '';
+      post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null; post.sauti.designed = true; if (!post.sauti.sub && pl) post.sauti.sub = pl;
+      post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); if (qc.pass) audit('sauti', { event: 'designed_poster_used', id: post.id });
     }
     if (!qc.pass) { post.status = 'REJECTED_QC'; post.qc = qc.problems; audit('sauti', { event: 'rejected_by_final_check', id: post.id, problems: qc.problems }); save(page.key, posts); if (++rejects <= 6) i--; continue; }
     try {
@@ -856,7 +869,7 @@ async function watchdog() {
   if (alerts.length) await telegram('AGENT ALERT\n\n' + alerts.join('\n\n'));
 }
 
-if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load, photoMatch, writeEnglish, finalCheck };   // the self check loads the plan without running anything
+if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load, save, design, photoMatch, writeEnglish, finalCheck };   // the self check loads the plan without running anything
 else (async () => {
   if (process.env.OWNER_TEST === '1') {   // owner check: prepare one owner photo post, send nothing, publish nothing
     delete process.env.TELEGRAM_BOT_TOKEN;
