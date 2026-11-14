@@ -37,9 +37,9 @@ const PAGES = [
     // Friday 7pm: the weekly DEBATE (owner, 4 Nov: intriguing debates on the day people are least busy) in place of Talk of the Day
     // weekly review 9 Nov: the 6pm evening question (V) is dropped; its posts reached 167 to 932 people against about 800 for a news story
     // and 1,500 to 6,500 for the 7:30am question, while news after 6pm did best of any time of day (median 976). Evenings now carry news.
-    // English Corner (owner, 14 Nov): one common English error made right, a clean white card, Tuesday, Thursday and Saturday at 10:30
-    week: { 0: [['08:00', 'G'], ['13:00', 'T'], ['19:00', 'R']], 1: [['13:00', 'T'], ['07:30', 'Q']], 2: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 3: [['13:00', 'T'], ['15:00', 'W'], ['07:30', 'Q']],
-      4: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 5: [['13:00', 'T'], ['07:30', 'Q'], ['19:00', 'X']], 6: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']] }, tags: ['sautimedia'] }
+    // English Corner (owner, 14 Nov): one common English error made right, a clean white card, every day at 10:30
+    week: { 0: [['08:00', 'G'], ['13:00', 'T'], ['19:00', 'R'], ['10:30', 'E']], 1: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 2: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 3: [['13:00', 'T'], ['15:00', 'W'], ['07:30', 'Q'], ['10:30', 'E']],
+      4: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 5: [['13:00', 'T'], ['07:30', 'Q'], ['19:00', 'X'], ['10:30', 'E']], 6: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']] }, tags: ['sautimedia'] }
 ];
 const NEWS_SLOTS = { W: 'D' };   // a news or profile slot with nothing approved gets this instead
 
