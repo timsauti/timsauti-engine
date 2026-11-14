@@ -25,7 +25,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
   auth = { Authorization: 'Bearer ' + page.token };
   if (ACTION === 'recaption') {
     // TARGET = our post record id: replaces the live post's text with the record's current caption (for corrections)
-    const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', page.key, 'posts.json'), 'utf8')); const p = posts.find((x) => x.id === TARGET);
+    const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', PAGE, 'posts.json'), 'utf8')); const p = posts.find((x) => x.id === TARGET);
     const pid = p && p.fb && (p.fb.postId || (p.fb.photoId && page.pageId + '_' + p.fb.photoId)); if (!pid) { console.log('no live post for ' + TARGET); process.exit(1); }
     const body = new URLSearchParams({ message: p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' ') });
     const r = await fetch(`https://graph.facebook.com/${GV}/${pid}`, { method: 'POST', headers: auth, body, signal: AbortSignal.timeout(60000) });
