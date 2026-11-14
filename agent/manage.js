@@ -288,6 +288,11 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'sauti', 'posts.json'), 'utf8')); const out = [];
     for (const id of String(TARGET).split(',').map((x) => x.trim())) { const p = posts.find((x) => x.id === id); if (!p) continue; const q = JSON.parse(JSON.stringify(p)); q.owner = false; out.push({ id, headline: p.headline, photo: (p.sauti || {}).photo, result: await R.photoMatch(q) }); }
     fs.writeFileSync(path.join(ROOT, 'data', 'photo_test.json'), JSON.stringify({ at: new Date().toISOString(), out }, null, 1)); console.log(out.length + ' tested');
+  } else if (ACTION === 'engtest') {
+    // writes one English Corner post and runs the editor check on it; nothing is published
+    process.env.SELFTEST = '1'; const R = require('./run'); const page = R.PAGES.find((p) => p.key === 'sauti');
+    const posts = R.load('sauti'); const post = await R.writeEnglish(page, posts, Date.now() + 3600000); const qc = await R.finalCheck(page, post);
+    fs.writeFileSync(path.join(ROOT, 'data', 'english_test.json'), JSON.stringify({ at: new Date().toISOString(), image: post.image, headline: post.headline, caption: post.caption, qc }, null, 1)); console.log(qc.pass ? 'passes' : 'fails');
   } else if (ACTION === 'oppnow') {
     // runs today's Opportunity Desk search again now and sends what is new (owner request)
     await require('../oppdesk/engine').tick({ tg: require('./tg'), force: true, log: console.log }); console.log('opportunity desk run done');

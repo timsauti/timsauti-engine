@@ -423,3 +423,30 @@ function witCard({ lines, name = 'Timothy Makasa', tag = '#Makasa' }) {
   return new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${parts.join('')}</svg>`, opts).render().asPng();
 }
 module.exports.witCard = witCard;
+
+// ---------- Sauti Media English Corner (owner, 14 Nov): one common error per card, clean white so it reads well and is shared ----------
+function englishCard({ wrong, right, rule, wrongEx, rightEx, num }) {
+  const navy = '#0a1a40', red = '#d7261e', green = '#14833b', grey = '#5b6478';
+  const logoF = path.join(__dirname, 'assets', 'sauti_logo.png');
+  const logo = fs.existsSync(logoF) ? `<image href="data:image/png;base64,${fs.readFileSync(logoF).toString('base64')}" x="56" y="40" width="170" height="168" preserveAspectRatio="xMinYMin meet"/>` : '';
+  const P = [`<rect width="${W}" height="${H}" fill="#ffffff"/>`, logo];
+  P.push(`<rect x="${W - 376}" y="62" width="320" height="58" rx="29" fill="${red}"/><text x="${W - 216}" y="101" text-anchor="middle" font-family="Poppins" font-weight="700" font-size="25" letter-spacing="3" fill="#fff">ENGLISH CORNER</text>`);
+  if (num) P.push(`<text x="${W - 216}" y="158" text-anchor="middle" font-family="Poppins" font-weight="600" font-size="24" fill="${grey}">Lesson ${num}</text>`);
+  P.push(`<text x="60" y="318" font-family="Anton" font-size="104" fill="${navy}">SAY IT RIGHT</text><rect x="60" y="340" width="150" height="8" rx="4" fill="${red}"/>`);
+  const cross = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${red}"/><path d="M${cx - r * 0.38} ${cy - r * 0.38} L${cx + r * 0.38} ${cy + r * 0.38} M${cx + r * 0.38} ${cy - r * 0.38} L${cx - r * 0.38} ${cy + r * 0.38}" stroke="#fff" stroke-width="${r * 0.22}" stroke-linecap="round"/>`;
+  const tick = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${green}"/><path d="M${cx - r * 0.42} ${cy + r * 0.02} L${cx - r * 0.1} ${cy + r * 0.34} L${cx + r * 0.45} ${cy - r * 0.32}" stroke="#fff" stroke-width="${r * 0.22}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const phrase = (t, y, col, strike) => { const f = fitRange(t, 740, 110, 'Poppins', 700, 'normal', 62, 34); const s = f.size, lines = f.lines, lh = s * 1.15; const y0 = y - ((lines.length - 1) * lh) / 2 + s * 0.35;
+    let out = textBlock(lines.map(esc), 220, y0, lh, 'start', `font-family="Poppins" font-weight="700" font-size="${s}" fill="${col}"`);
+    if (strike) lines.forEach((l, i) => { const w = textWidth(l, s, 'Poppins', 700); out += `<rect x="220" y="${(y0 + i * lh - s * 0.33).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(4, s * 0.07).toFixed(1)}" fill="${red}"/>`; }); return out; };
+  P.push(`<rect x="60" y="380" width="${W - 120}" height="170" rx="28" fill="#fdeeee"/>${cross(140, 465, 46)}<text x="220" y="420" font-family="Poppins" font-weight="700" font-size="22" letter-spacing="3" fill="${red}">NOT</text>${phrase(wrong, 480, '#8a1c17', true)}`);
+  P.push(`<rect x="60" y="578" width="${W - 120}" height="170" rx="28" fill="#e9f7ef"/>${tick(140, 663, 46)}<text x="220" y="618" font-family="Poppins" font-weight="700" font-size="22" letter-spacing="3" fill="${green}">SAY</text>${phrase(right, 678, '#0d5c29', false)}`);
+  let y = 820; P.push(`<text x="60" y="${y}" font-family="Poppins" font-weight="700" font-size="24" letter-spacing="3" fill="${red}">WHY</text>`); y += 50;
+  for (const l of wrap(rule, 36, W - 120, 'Poppins', 500).slice(0, 3)) { P.push(`<text x="60" y="${y}" font-family="Poppins" font-weight="500" font-size="36" fill="${navy}">${esc(l)}</text>`); y += 50; }
+  y += 22; P.push(`<rect x="60" y="${y}" width="${W - 120}" height="2" fill="#e3e6ee"/>`); y += 58;
+  const ex = (t, icon, col) => { const ls = wrap(t, 30, W - 200, 'Lora', 400, 'italic').slice(0, 2); const out = icon(84, y - 10, 18) + textBlock(ls.map(esc), 120, y, 42, 'start', `font-family="Lora" font-style="italic" font-size="30" fill="${col}"`); y += ls.length * 42 + 22; return out; };
+  P.push(ex(wrongEx, cross, grey)); P.push(ex(rightEx, tick, navy));
+  P.push(`<rect x="0" y="${H - 96}" width="${W}" height="96" fill="${navy}"/><rect x="0" y="${H - 102}" width="${W}" height="6" fill="${red}"/>`);
+  P.push(`<text x="60" y="${H - 38}" font-family="Poppins" font-weight="700" font-size="30" fill="#fff">Sauti Media English Corner</text><text x="${W - 60}" y="${H - 38}" text-anchor="end" font-family="Poppins" font-weight="600" font-size="28" fill="#f2b632">#sautimedia</text>`);
+  return toPng(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${P.join('')}</svg>`);
+}
+module.exports.englishCard = englishCard;

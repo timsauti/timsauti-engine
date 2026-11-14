@@ -37,8 +37,9 @@ const PAGES = [
     // Friday 7pm: the weekly DEBATE (owner, 4 Nov: intriguing debates on the day people are least busy) in place of Talk of the Day
     // weekly review 9 Nov: the 6pm evening question (V) is dropped; its posts reached 167 to 932 people against about 800 for a news story
     // and 1,500 to 6,500 for the 7:30am question, while news after 6pm did best of any time of day (median 976). Evenings now carry news.
-    week: { 0: [['08:00', 'G'], ['13:00', 'T'], ['19:00', 'R']], 1: [['13:00', 'T'], ['07:30', 'Q']], 2: [['13:00', 'T'], ['07:30', 'Q']], 3: [['13:00', 'T'], ['15:00', 'W'], ['07:30', 'Q']],
-      4: [['13:00', 'T'], ['07:30', 'Q']], 5: [['13:00', 'T'], ['07:30', 'Q'], ['19:00', 'X']], 6: [['13:00', 'T'], ['07:30', 'Q']] }, tags: ['sautimedia'] }
+    // English Corner (owner, 14 Nov): one common English error made right, a clean white card, Tuesday, Thursday and Saturday at 10:30
+    week: { 0: [['08:00', 'G'], ['13:00', 'T'], ['19:00', 'R']], 1: [['13:00', 'T'], ['07:30', 'Q']], 2: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 3: [['13:00', 'T'], ['15:00', 'W'], ['07:30', 'Q']],
+      4: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']], 5: [['13:00', 'T'], ['07:30', 'Q'], ['19:00', 'X']], 6: [['13:00', 'T'], ['07:30', 'Q'], ['10:30', 'E']] }, tags: ['sautimedia'] }
 ];
 const NEWS_SLOTS = { W: 'D' };   // a news or profile slot with nothing approved gets this instead
 
@@ -156,6 +157,10 @@ function leastUsed(dir, posts, prefix, ok) {
 }
 function design(page, post, posts) {
   const out = path.join(dataDir(page.key), 'images'); fs.mkdirSync(out, { recursive: true });
+  if (post.english) {   // English Corner: a clean white card by design (owner, 14 Nov), the one Sauti graphic without a photo
+    const file = path.join(out, post.id + '.png'); fs.writeFileSync(file, require('./card').englishCard(post.english));
+    return { file: path.relative(ROOT, file), photoId: null, layout: 'english' };
+  }
   if (post.wit) {   // Makasa wit card (owner, 12 Nov): text on a note card, signed with his name
     const file = path.join(out, post.id + '.png'); fs.writeFileSync(file, require('./card').witCard({ lines: post.wit }));
     return { file: path.relative(ROOT, file), photoId: null, layout: 'wit' };
@@ -327,7 +332,7 @@ async function finalCheck(page, post) {
   if (page.key === 'sauti' && post.fromNews && cap.length < 250) problems.push('story too thin');
   if (SWAHILI.test(cap)) problems.push('kiswahili');
   if (/found unique ways|has been doing great|various ways|many things/i.test(cap)) problems.push('vague filler');
-  if (page.key === 'sauti' && !(post.sauti && post.sauti.photo)) problems.push('poster has no photo (owner rule: no graphic without a photo)');
+  if (page.key === 'sauti' && !post.english && !(post.sauti && post.sauti.photo)) problems.push('poster has no photo (owner rule: no graphic without a photo)');
   if (problems.length) return { pass: false, problems };
   if (page.key === 'sauti' && post.sauti && post.sauti.photo) {
     const pm = await photoMatch(post); post.sauti.photoScore = pm.score;
@@ -343,7 +348,7 @@ async function finalCheck(page, post) {
       if (flat > 0.5) return { pass: false, problems: ['poster photo did not draw (mostly blank)'] };
     } catch (e) {}
   }
-  const extra = post.wit ? ' This is a deliberate text card (dark background, note paper, red circles), with no photo by design; do not fail it for having no photo.' : page.key === 'makasa' ? ' The photo is of the Page owner: his whole head and face must be fully in view, never cut at the top.' : '';
+  const extra = post.english ? ' This is the English Corner: a deliberate clean white lesson card with no photo by design (the owner asked for it); do not fail it for having no photo, and check the English on it is correct.' : post.wit ? ' This is a deliberate text card (dark background, note paper, red circles), with no photo by design; do not fail it for having no photo.' : page.key === 'makasa' ? ' The photo is of the Page owner: his whole head and face must be fully in view, never cut at the top.' : '';
   try {
     const v = await gemini({ system: 'You are the strict chief editor of a professional Kenyan Facebook Page. You approve only posts you would be proud to publish. Output only JSON.',
       user: `Check this ${page.name} post. The image is the poster that goes with it.${extra}
@@ -495,9 +500,31 @@ Return JSON: {"image_query":"2 to 4 words for a fitting real photo of a place or
   post.image = { file: path.relative(ROOT, file), photoId, layout: 'thread' };
   return post;
 }
+// ---------- Sauti Media English Corner (owner, 14 Nov) ----------
+// The lessons are written and checked by hand in agent/english.json, so the rule on the card is never invented; the writer only
+// adds the caption around it. Lessons go in order and never repeat until all have run.
+async function writeEnglish(page, posts, slotAt) {
+  const L = JSON.parse(fs.readFileSync(path.join(__dirname, 'english.json'), 'utf8'));
+  const done = posts.filter((p) => p.english && p.status !== 'REJECTED').map((p) => p.english.id);
+  const round = done.filter((id) => L.some((l) => l.id === id)).length % L.length;
+  const lesson = L.find((l) => !done.slice(-(round || L.length)).includes(l.id)) || L[0];
+  const num = done.length + 1;
+  let caption = '';
+  try {
+    const d = await gemini({ system: 'You write a short English lesson for Sauti Media, a Kenyan news Page. Clear, friendly, never mocking. Output only JSON.',
+      user: `Lesson ${num} of the Sauti Media English Corner. The common error: "${lesson.wrong}". The correct form: "${lesson.right}". The rule: ${lesson.rule} Example: wrong "${lesson.wrongEx}", right "${lesson.rightEx}".
+Write the Facebook caption: start with the line "ENGLISH CORNER: ${lesson.wrong.toUpperCase()} OR ${lesson.right.toUpperCase()}?", then 60 to 120 words that explain the rule in plain words, give one more everyday Kenyan example sentence done right, and end with a one line quick quiz question about the same rule that readers can answer (a question, not an instruction to comment). Use ONLY the rule given; add no other grammar claims. English only. No dashes, no emojis, never "testament" or "whether", never ask readers to comment, like, share or tag.
+Return JSON: {"caption":"..."}` });
+    caption = clean(d.caption || '');
+  } catch (e) {}
+  if (caption.length < 160 || BANNED.test(caption) || SWAHILI.test(caption) || /comment|share|tag a|drop your/i.test(caption)) caption = `ENGLISH CORNER: ${lesson.wrong.toUpperCase()} OR ${lesson.right.toUpperCase()}?\n\n${lesson.rule}\n\nNot: ${lesson.wrongEx}\nSay: ${lesson.rightEx}\n\nA small correction that makes your English sharper at work, in school and online. Which other English mix up do you hear every day?`;
+  const post = { id: 'p_' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'), page: page.key, category: 'E', topic: 'english ' + lesson.id, headline: `English Corner: ${lesson.wrong} or ${lesson.right}`, english: Object.assign({ num }, lesson), caption, hashtags: ['EnglishCorner'], scheduledAt: iso(slotAt), createdAt: iso(Date.now()), status: 'READY' };
+  post.image = design(page, post, posts); return post;
+}
 async function write(page, posts, slotAt, cat) {
   if (cat === 'T') { const tp = await writeThread(page, posts, slotAt).catch(() => null); if (tp) return tp; cat = page.key === 'makasa' ? 'K' : page.key === 'sauti' ? 'D' : 'B'; }
   if (page.key === 'timsauti') { const wp = await writeTimsautiWork(page, posts, slotAt).catch(() => null); if (wp) return wp; }
+  if (page.key === 'sauti' && cat === 'E') return writeEnglish(page, posts, slotAt);
   if (page.key === 'sauti') return writeSauti(page, posts, slotAt, cat);
   if (page.key === 'makasa' && cat === 'W') {   // wit card (owner, 12 Nov: "Not invited = Don't go!" style real life wisdom, with his name on it)
     const past = posts.filter((p) => p.wit).slice(-20).map((p) => p.wit.map((l) => l.join(' = ')).join('; '));
@@ -827,7 +854,7 @@ async function watchdog() {
   if (alerts.length) await telegram('AGENT ALERT\n\n' + alerts.join('\n\n'));
 }
 
-if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load, photoMatch };   // the self check loads the plan without running anything
+if (process.env.SELFTEST === '1') module.exports = { PAGES, slotsFor, eatDate, gemini, write, load, photoMatch, writeEnglish, finalCheck };   // the self check loads the plan without running anything
 else (async () => {
   if (process.env.OWNER_TEST === '1') {   // owner check: prepare one owner photo post, send nothing, publish nothing
     delete process.env.TELEGRAM_BOT_TOKEN;
