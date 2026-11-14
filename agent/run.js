@@ -684,6 +684,8 @@ async function runPage(page) {
   let posts = load(page.key);
   const notes = [];
   // 1) post the item whose time has come (one per run), or mark it missed if more than 3 hours late
+  // a READY record with no valid time (a hand made one) would stop the whole run: it is set aside instead (14 Nov, no posts for hours)
+  for (const p of posts) if (p.status === 'READY' && !(p.scheduledAt && Date.parse(p.scheduledAt))) { if (p.bookAt && Date.parse(p.bookAt)) p.scheduledAt = p.bookAt; else { p.status = 'SET_ASIDE'; audit(page.key, { event: 'set_aside_no_time', id: p.id }); } }
   for (const p of posts) if (p.status === 'READY' && Date.parse(p.scheduledAt) < NOW - 3 * 3600000) { p.status = 'MISSED'; audit(page.key, { event: 'missed', id: p.id }); }
   // a Page on an every second day plan: posts already written for a rest day, or for a dropped time, are withdrawn (the owner's own posts stay)
   if (page.everyDays) for (const p of posts) if (p.status === 'READY' && !p.owner && p.scheduledAt) { const d0 = eatDate(Date.parse(p.scheduledAt)); if (!slotsFor(page, d0).some(([hm]) => slotTime(d0, hm) === Date.parse(p.scheduledAt))) { p.status = 'CANCELLED'; p.reasons = ['one_post_in_two_days']; audit(page.key, { event: 'cancelled_new_plan', id: p.id }); } }
