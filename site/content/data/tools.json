@@ -1,0 +1,15 @@
+{
+ "mpesa": {
+  "checked": "2026-11-15",
+  "note": "Safaricom consumer tariff. M-PESA always shows the exact charge before you enter your PIN.",
+  "sources": [{"name": "HapaKenya, M-PESA charges 2026", "url": "https://hapakenya.com/2026/01/28/safaricom-m-pesa-charges-2026-everything-you-need-to-know"}, {"name": "Safaricom", "url": "https://www.safaricom.co.ke/"}],
+  "bands": [[1,49,0,null],[50,100,0,11],[101,500,7,29],[501,1000,13,29],[1001,1500,23,29],[1501,2500,33,29],[2501,3500,53,52],[3501,5000,57,69],[5001,7500,78,87],[7501,10000,90,115],[10001,15000,100,167],[15001,20000,105,185],[20001,35000,108,197],[35001,50000,108,278],[50001,250000,108,309]]
+ },
+ "fuel": {
+  "town": "Nairobi",
+  "from": "2026-11-15", "to": "2026-12-14",
+  "petrol": 226.96, "diesel": 227.76, "kerosene": 219.87,
+  "note": "EPRA kept prices unchanged for this cycle. Prices in other towns differ slightly.",
+  "sources": [{"name": "TV47, EPRA review of 14 November 2026", "url": "https://www.tv47.digital/epra-maintains-fuel-prices-for-november-december-2026-after-government-intervention-168986/"}]
+ }
+}
