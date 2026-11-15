@@ -61,6 +61,7 @@ jobs:
           CNAME: ${{ vars.CNAME }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_SIGNIN: ${{ vars.GOOGLE_SIGNIN }}
         run: node src/build.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

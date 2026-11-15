@@ -243,6 +243,14 @@ details summary{cursor:pointer;font-weight:600;margin-top:8px}
 .btn.voted{background:#e8fbf2;color:#0b6b45}
 .bigvote{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:linear-gradient(135deg,#fff8e3,#fff);border:2px solid #f4d27a;border-radius:18px;padding:16px 20px;margin:18px 0}
 .bigvote b{display:block;font-family:var(--head);font-size:30px}.bigvote small{color:var(--muted)}.bigvote .btn{font-size:17px;padding:14px 26px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.split div{background:#f5f8fc;border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}.split b{display:block;font-family:var(--head);font-size:30px;color:#0b6fd0}.split small{color:var(--muted)}
+.h3s{font-family:var(--head);font-size:17px;margin:18px 0 8px}
+.crit{list-style:none;padding:0;margin:0}.crit li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;padding:8px 0;border-top:1px solid var(--line)}.crit small{flex-basis:100%;color:var(--muted);font-size:13px}
+.judges{display:grid;gap:10px}.judges>div{display:flex;gap:10px;align-items:center}.judges b{display:block;font-size:15px}.judges small{color:var(--muted);font-size:13px}
+.jentry{margin-top:16px}.jhead{display:flex;gap:14px;align-items:center}.jhead img{width:96px;height:72px;object-fit:cover;border-radius:10px}.jhead b{display:block;font-family:var(--head);font-size:18px}.jhead small{color:var(--muted)}
+.jcrit{display:grid;gap:10px;margin-top:12px}.jrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.jrow select{width:auto;min-width:90px}.jrow .saved{color:#0b6b45;font-size:13px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font:600 16px var(--body);cursor:pointer;margin:14px 0 4px}.gbtn svg{width:20px;height:20px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:10px 0}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 /* footer */
 footer{background:var(--navy);color:#9fb3cf;margin-top:40px;padding:40px 0 30px;font-size:15px}
 .fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:26px}

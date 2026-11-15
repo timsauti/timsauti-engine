@@ -26,6 +26,9 @@ const challenges = fs.existsSync(CH) ? fs.readdirSync(CH).filter((f) => f.endsWi
 async function sync() {
   if (!challenges.length) return;
   await db('challenges', { method: 'POST', body: JSON.stringify(challenges.map((c) => ({ slug: c.slug, title: c.title, opens: c.opens, entries_close: c.entriesClose, voting_closes: c.votingCloses }))), headers: Object.assign({ Prefer: 'resolution=merge-duplicates,return=minimal' }, H) });
+  // judges: only the scrambled code (hash) is ever stored; the codes themselves go privately to the owner
+  const jrows = []; for (const c of challenges) for (const j of c.judges || []) if (j.codeHash) jrows.push({ challenge: c.slug, judge_name: j.name, code_hash: j.codeHash });
+  if (jrows.length) await db('challenge_judges', { method: 'POST', body: JSON.stringify(jrows), headers: Object.assign({ Prefer: 'resolution=merge-duplicates,return=minimal' }, H) });
 }
 
 async function review() {
@@ -68,15 +71,25 @@ async function close() {
     if (c.result || Date.now() < Date.parse(c.votingCloses)) continue;
     const counts = await db(`vote_counts?challenge=eq.${c.slug}&select=entry_id,n&order=n.desc`);
     const entries = await db(`entries?challenge=eq.${c.slug}&status=eq.approved&select=id,slug,title,author`);
-    const ranked = entries.map((e) => ({ e, n: (counts.find((x) => x.entry_id === e.id) || {}).n || 0 })).sort((a, b) => b.n - a.n);
-    if (!ranked.length || !ranked[0].n) { c.result = { closed: new Date().toISOString(), none: true }; }
+    const V = Object.fromEntries(counts.map((x) => [x.entry_id, x.n]));
+    const crit = c.criteria && c.criteria.length ? c.criteria : null, judges = (c.judges || []).filter((x) => x.codeHash);
+    const scores = judges.length ? await db(`scores?challenge=eq.${c.slug}&select=entry_id,judge_name,criterion,score`) : [];
+    const maxV = Math.max(1, ...entries.map((e) => V[e.id] || 0)), w = judges.length ? (c.voteWeight == null ? 0.3 : c.voteWeight) : 1;
+    const judgeScore = (id) => { // average over judges of the weighted criteria, as 0 to 100
+      const by = {}; for (const r of scores.filter((x) => x.entry_id === id)) (by[r.judge_name] = by[r.judge_name] || {})[r.criterion] = r.score;
+      const per = Object.values(by).map((m) => { let t = 0, ws = 0; for (const k of (crit || Object.keys(m).map((n) => ({ name: n, weight: 1 })))) if (m[k.name] != null) { t += m[k.name] * k.weight; ws += k.weight; } return ws ? t / ws * 10 : null; }).filter((x) => x != null);
+      return per.length ? per.reduce((a, b) => a + b, 0) / per.length : 0;
+    };
+    const ranked = entries.map((e) => { const n = V[e.id] || 0, J = judgeScore(e.id), P = n / maxV * 100; return { e, n, J: Math.round(J), final: Math.round((1 - w) * J + w * P) }; }).sort((a, b) => b.final - a.final || b.n - a.n);
+    const pc = entries.map((e) => ({ e, n: V[e.id] || 0 })).sort((a, b) => b.n - a.n)[0];
+    if (!ranked.length || (!judges.length && !ranked[0].n)) { c.result = { closed: new Date().toISOString(), none: true }; }
     else {
-      const top = ranked[0], votes = await db(`votes?challenge=eq.${c.slug}&entry_id=eq.${top.e.id}&select=user_id,created_at`);
+      const top = ranked[0], votes = await db(`votes?challenge=eq.${c.slug}&entry_id=eq.${top.e.id}&select=user_id`);
       const ids = votes.map((v) => v.user_id); const profs = ids.length ? await db(`profiles?id=in.(${ids.join(',')})&select=id,created_at`) : [];
       const fresh = profs.filter((p) => Date.parse(p.created_at) > Date.parse(c.opens)).length;
-      let email = ''; try { const u = await (await fetch(`${SU}/auth/v1/admin/users/${top.e.author}`, { headers: H })).json(); email = u.email || ''; } catch (x) {}
-      c.result = { closed: new Date().toISOString(), top: ranked.slice(0, 5).map((r) => ({ slug: r.e.slug, votes: r.n })), winner: top.e.slug, verified: false };
-      await tell(`Challenge closed: ${c.title}\n\nWinner (subject to your check): "${top.e.title}" with ${top.n} votes.\nRunner up: ${ranked[1] ? '"' + ranked[1].e.title + '" with ' + ranked[1].n + ' votes' : 'none'}.\n\nFraud check: ${fresh} of the winner's ${top.n} voters created their accounts after the challenge opened. Friends joining to vote is normal; a very high share with odd names may mean fake accounts.\n\nWinner's email: ${email || 'not found'}\nPrize: ${c.prize || 'see challenge'}${c.sponsor ? ', sponsored by ' + c.sponsor.name : ''}.\nReply here or tell Claude "confirm the winner" once you are satisfied, and arrange the prize with the sponsor.`);
+      const mail = async (a) => { try { const u = await (await fetch(`${SU}/auth/v1/admin/users/${a}`, { headers: H })).json(); return u.email || ''; } catch (x) { return ''; } };
+      c.result = { closed: new Date().toISOString(), method: judges.length ? `judges ${Math.round((1 - w) * 100)}%, public votes ${Math.round(w * 100)}%` : 'public votes', top: ranked.slice(0, 5).map((r) => ({ slug: r.e.slug, votes: r.n, judges: r.J, final: r.final })), winner: top.e.slug, peoplesChoice: pc && pc.n ? pc.e.slug : null, verified: false };
+      await tell(`Challenge closed: ${c.title}\n\nWinner (subject to your check): "${top.e.title}", final score ${top.final}/100 (judges ${top.J}, ${top.n} votes).\nWinner's email: ${await mail(top.e.author)}\n\nPeople's Choice: ${pc && pc.n ? '"' + pc.e.title + '" with ' + pc.n + ' votes. Email: ' + await mail(pc.e.author) : 'none'}\n\nFraud check: ${fresh} of the winner's ${top.n} voters created their accounts after the challenge opened.\nPrize: ${c.prize || 'see challenge'}${c.peoplesPrize ? '; People\'s Choice: ' + c.peoplesPrize : ''}${c.sponsor ? '. Sponsored by ' + c.sponsor.name : ''}.\nArrange the prizes with the sponsor once you are satisfied.`);
     }
     const out = Object.assign({}, c); delete out._file; fs.writeFileSync(c._file, JSON.stringify(out, null, 1)); console.log('challenge closed ' + c.slug);
   }

@@ -236,3 +236,49 @@ create table if not exists public.sponsor_leads (
 alter table public.sponsor_leads enable row level security;
 drop policy if exists "leads send" on public.sponsor_leads;
 create policy "leads send" on public.sponsor_leads for insert with check (notified = false);
+
+-- ===== Round 4: judged challenges =====
+-- judges need no account: each gets a private code from the owner; only a scrambled copy (hash) of the code is stored
+create extension if not exists pgcrypto with schema extensions;
+create table if not exists public.challenge_judges (
+  challenge text not null references public.challenges(slug) on delete cascade,
+  judge_name text not null,
+  code_hash text not null,
+  primary key (challenge, code_hash)
+);
+alter table public.challenge_judges enable row level security;   -- no public policies: nobody can read the list directly
+
+create table if not exists public.scores (
+  challenge text not null references public.challenges(slug) on delete cascade,
+  entry_id uuid not null references public.entries(id) on delete cascade,
+  judge_name text not null,
+  criterion text not null,
+  score smallint not null check (score between 1 and 10),
+  updated_at timestamptz not null default now(),
+  primary key (challenge, entry_id, judge_name, criterion)
+);
+alter table public.scores enable row level security;   -- private until the robot publishes results
+
+-- a judge proves their code, then saves a score; works only between entries opening and voting closing
+create or replace function public.judge_check(p_challenge text, p_code text) returns text
+language sql security definer set search_path = public, extensions as $$
+  select judge_name from public.challenge_judges where challenge = p_challenge and code_hash = encode(digest(p_code, 'sha256'), 'hex') limit 1;
+$$;
+create or replace function public.judge_score(p_challenge text, p_code text, p_entry uuid, p_criterion text, p_score int) returns boolean
+language plpgsql security definer set search_path = public, extensions as $$
+declare j text;
+begin
+  select judge_name into j from public.challenge_judges where challenge = p_challenge and code_hash = encode(digest(p_code, 'sha256'), 'hex');
+  if j is null then return false; end if;
+  if not exists (select 1 from public.challenges c where c.slug = p_challenge and now() between c.opens and c.voting_closes) then return false; end if;
+  if not exists (select 1 from public.entries e where e.id = p_entry and e.challenge = p_challenge and e.status = 'approved') then return false; end if;
+  insert into public.scores (challenge, entry_id, judge_name, criterion, score) values (p_challenge, p_entry, j, p_criterion, greatest(1, least(10, p_score)))
+  on conflict (challenge, entry_id, judge_name, criterion) do update set score = excluded.score, updated_at = now();
+  return true;
+end $$;
+create or replace function public.judge_my_scores(p_challenge text, p_code text) returns table (entry_id uuid, criterion text, score smallint)
+language sql security definer set search_path = public, extensions as $$
+  select s.entry_id, s.criterion, s.score from public.scores s
+  where s.challenge = p_challenge and s.judge_name = (select judge_name from public.challenge_judges where challenge = p_challenge and code_hash = encode(digest(p_code, 'sha256'), 'hex'));
+$$;
+grant execute on function public.judge_check(text, text), public.judge_score(text, text, uuid, text, int), public.judge_my_scores(text, text) to anon, authenticated;

@@ -32,7 +32,8 @@
       };
       return;
     }
-    el.innerHTML = '<h1 style="font-family:var(--head);margin:0 0 6px;font-size:32px">Join Tech na Pesa</h1><p style="color:var(--muted);margin:0 0 6px">Enter your email. We will send you a sign in link. No password to remember.</p><label>Email address</label><input id="em" type="email" autocomplete="email" placeholder="you@example.com"><button class="btn" id="go" style="margin-top:16px;width:100%;justify-content:center">Send my sign in link</button><div id="st"></div><p class="hint">By joining you agree to our <a href="' + B + '/rules/" style="text-decoration:underline">rules</a> and <a href="' + B + '/privacy/" style="text-decoration:underline">privacy policy</a>.</p>';
+    el.innerHTML = '<h1 style="font-family:var(--head);margin:0 0 6px;font-size:32px">Join Tech na Pesa</h1>' + (C.google ? '<button class="gbtn" id="gg"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/></svg>Continue with Google</button><div class="or">or use your email</div>' : '') + '<p style="color:var(--muted);margin:0 0 6px">Enter your email. We will send you a sign in link. No password to remember.</p><label>Email address</label><input id="em" type="email" autocomplete="email" placeholder="you@example.com"><button class="btn" id="go" style="margin-top:16px;width:100%;justify-content:center">Send my sign in link</button><div id="st"></div><p class="hint">By joining you agree to our <a href="' + B + '/rules/" style="text-decoration:underline">rules</a> and <a href="' + B + '/privacy/" style="text-decoration:underline">privacy policy</a>.</p>';
+    if ($('gg')) $('gg').onclick = function () { sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + B + '/join/?next=' + encodeURIComponent(next) } }); };
     $('go').onclick = async function () {
       var em = $('em').value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { $('st').innerHTML = '<div class="note err">Please enter a valid email address.</div>'; return; }
       $('go').disabled = true;
@@ -258,6 +259,31 @@
     };
   }
 
+
+  // ---------- judges' scoring page (private code, no account needed)
+  function judgePage() {
+    var root = $('judge'); if (!root) return; var ch = root.dataset.ch, crit = JSON.parse(root.dataset.crit || '["Overall"]');
+    if (!live) { $('jst').innerHTML = '<div class="note info">Scoring opens once the community database is switched on.</div>'; return; }
+    var code = ''; try { code = sessionStorage.getItem('tnp_judge_' + ch) || ''; } catch (e) {}
+    if (code) $('jcode').value = code;
+    $('jgo').onclick = async function () {
+      code = $('jcode').value.trim(); if (!code) return;
+      var who = await sb.rpc('judge_check', { p_challenge: ch, p_code: code });
+      if (who.error || !who.data) { $('jst').innerHTML = '<div class="note err">That code is not recognised for this challenge.</div>'; return; }
+      try { sessionStorage.setItem('tnp_judge_' + ch, code); } catch (e) {}
+      $('jst').innerHTML = '<div class="note ok">Welcome, ' + esc(who.data) + '. Your scores save automatically.</div>';
+      var mine = await sb.rpc('judge_my_scores', { p_challenge: ch, p_code: code }), M = {};
+      (mine.data || []).forEach(function (r) { M[r.entry_id + '|' + r.criterion] = r.score; });
+      document.querySelectorAll('.jentry').forEach(function (box) {
+        var id = box.dataset.id;
+        box.querySelector('.jcrit').innerHTML = crit.map(function (k) { var v = M[id + '|' + k]; return '<div class="jrow"><span>' + esc(k) + '</span><span><select data-k="' + esc(k) + '"><option value="">Score</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<option' + (v === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select> <span class="saved"></span></span></div>'; }).join('');
+        box.querySelectorAll('select').forEach(function (sel) { sel.onchange = async function () { if (!sel.value) return; var r = await sb.rpc('judge_score', { p_challenge: ch, p_code: code, p_entry: id, p_criterion: sel.dataset.k, p_score: +sel.value }); sel.nextElementSibling.textContent = r.data ? 'Saved' : 'Not saved: scoring may be closed'; }; });
+      });
+      $('jlist').hidden = false;
+    };
+    if (code) $('jgo').click();
+  }
+
   // time ago on posts, like Facebook
   function ago(d) { var t = Date.parse(d.length === 10 ? d + 'T09:00:00+03:00' : d), m = Math.round((Date.now() - t) / 60000); if (isNaN(m)) return null; if (m < 60) return Math.max(1, m) + ' min'; var h = Math.round(m / 60); if (h < 24) return h + ' h'; var dd = Math.round(h / 24); if (dd < 7) return dd + (dd === 1 ? ' day' : ' days'); return null; }
   document.querySelectorAll('time[data-ago]').forEach(function (el) { var a = ago(el.dataset.ago); if (a && el.dataset.ago.length > 10) el.textContent = a; });
@@ -279,5 +305,5 @@
       };
     });
   }
-  join(); writer(); mine(); radar(); likes(); counts(); rating(); commentsUI(); board(); voting(); enter(); sponsorForm();
+  join(); writer(); mine(); radar(); likes(); counts(); rating(); commentsUI(); board(); voting(); enter(); sponsorForm(); judgePage();
 })();
