@@ -32,7 +32,8 @@ function cardHtml(s) {
   const cat = s.community ? 'community' : s.cat, seed = hash(s.slug);
   const photo = s.photo ? `<img src="file://${path.join(ROOT, 'static', s.photo)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : '';
   if (photo) return page(photo + `<div style="position:absolute;left:28px;top:28px;background:#07142a;color:${ACC[cat]};font:700 22px Inter;letter-spacing:2px;padding:10px 18px;border-radius:999px">${LABEL[cat]}</div>`);
-  const st = s.stat || (s.community ? 'Reader' : 'Explained'), fs2 = st.length > 7 ? 120 : 150;
+  const st = s.stat || (s.community ? String(s.author || 'A reader').slice(0, 22) : 'Explained'), fs2 = st.length > 14 ? 84 : st.length > 7 ? 110 : 150;
+  if (s.community && !s.statLabel) s = Object.assign({}, s, { statLabel: "Readers' Desk" + (s.county ? ', ' + s.county : '') });
   return page(`<svg width="1200" height="630" viewBox="0 0 1200 630" style="position:absolute;inset:0">${defs}<rect width="1200" height="630" fill="url(#bg)"/><rect width="1200" height="630" fill="url(#dots)"/><g opacity=".9">${motif(cat, seed)}</g></svg>
 <div style="position:absolute;left:70px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:6px;max-width:640px"><div style="color:${ACC[cat]};font:700 ${fs2}px 'Space Grotesk';line-height:1;letter-spacing:-2px;text-shadow:0 6px 30px rgba(0,0,0,.4)">${esc(st)}</div><div style="color:#dfe9f7;font:600 38px Inter;line-height:1.2">${esc(s.statLabel || '')}</div></div>`);
 }

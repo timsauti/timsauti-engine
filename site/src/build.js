@@ -20,6 +20,17 @@ const news = read(path.join(ROOT, 'content', 'stories')).sort((a, b) => String(b
 const comm = read(path.join(ROOT, 'content', 'community')).map((s) => Object.assign({ community: true }, s)).sort((a, b) => String(b.date).localeCompare(a.date));
 const img = (s) => u(`/img/cards/${s.slug}.png`);
 const href = (s) => u(s.community ? `/community/${s.slug}/` : `/story/${s.slug}/`);
+const wslug = (s) => (String(s.author || 'reader').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reader') + (s.author_key ? '-' + s.author_key : '');
+const whref = (s) => u(`/writers/${wslug(s)}/`);
+const initial = (n) => esc(String(n || '?').trim().slice(0, 1).toUpperCase());
+// the readers' column: their names, counties and stories, newest first
+function readersColumn(limit) {
+  const list = comm.slice(0, limit || 6);
+  return `<aside class="readers"><div class="rh"><span class="chip cat-community">From our readers</span><h2>Readers' Desk</h2><p>Stories written by the Tech na Pesa community.</p></div>`
+    + (list.length ? list.map((s) => `<a class="rd" href="${href(s)}"><span class="avatar">${initial(s.author)}</span><span><b>${esc(s.title)}</b><small>${esc(s.author)}${s.county ? ', ' + esc(s.county) : ''} &middot; ${fmt(s.date)}</small></span></a>`).join('')
+      : `<div class="rd empty-rd"><span class="avatar">+</span><span><b>Your name could be the first one here</b><small>Write about a hustle, a money lesson or a scam you beat.</small></span></div>`)
+    + `<div class="rf"><a class="btn" href="${u('/write/')}">Write for us</a>${list.length ? `<a href="${u('/community/')}">All reader stories</a>` : ''}</div></aside>`;
+}
 
 const ICON = {
   wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.1 5.1 0 0 0 1.1 2.7 11.6 11.6 0 0 0 4.4 3.9c1.6.7 2.3.8 3.1.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.6-.3z"/></svg>',
@@ -56,7 +67,7 @@ function layout({ title, desc, canon, image, body, on, type, extraHead }) {
 <script>window.TNP_BASE=${JSON.stringify(BASE)};</script><script src="${u('/app.js')}" defer></script></body></html>`;
 }
 
-const card = (s) => `<a class="card cat-${s.community ? 'community' : s.cat}" href="${href(s)}"><img loading="lazy" src="${img(s)}" alt=""><div class="in"><span class="chip">${s.community ? 'Community' : CATS[s.cat].name}</span><h3>${esc(s.title)}</h3><p>${esc(s.dek || '')}</p><span class="meta">${fmt(s.date)}${s.community ? ' &middot; by ' + esc(s.author) : ''}</span></div></a>`;
+const card = (s) => `<a class="card cat-${s.community ? 'community' : s.cat}" href="${href(s)}"><img loading="lazy" src="${img(s)}" alt=""><div class="in"><span class="chip">${s.community ? 'Community' : CATS[s.cat].name}</span><h3>${esc(s.title)}</h3><p>${esc(s.dek || '')}</p><span class="meta">${fmt(s.date)}${s.community ? ' &middot; by <b>' + esc(s.author) + '</b>' : ''}</span></div></a>`;
 
 function bodyHtml(blocks) {
   return blocks.map((b) => typeof b === 'string' ? `<p>${esc(b)}</p>` : b.h ? `<h2>${esc(b.h)}</h2>` : b.list ? `<ul>${b.list.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : b.steps ? `<ol class="steps">${b.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '').join('');
@@ -83,7 +94,7 @@ const home = `
 <a class="lead cat-${lead.cat}" href="${href(lead)}"><img src="${img(lead)}" alt=""><div class="txt"><span class="chip">${CATS[lead.cat].name}</span><h1>${esc(lead.title)}</h1><p>${esc(lead.dek)}</p></div></a>
 <div class="side">${rest.slice(0, 4).map((s) => `<a class="mini cat-${s.cat}" href="${href(s)}"><img src="${img(s)}" alt=""><div><span class="chip">${CATS[s.cat].name}</span><h3>${esc(s.title)}</h3></div></a>`).join('')}</div>
 </div></div>
-<section><div class="wrap"><div class="sec-h"><h2>Latest</h2><a href="${u('/c/tech/')}">All sections</a></div><div class="grid">${news.slice(0, 6).map(card).join('')}</div></div></section>
+<section><div class="wrap with-readers"><div><div class="sec-h"><h2>Latest</h2><a href="${u('/c/tech/')}">All sections</a></div><div class="grid g2">${news.slice(0, 6).map(card).join('')}</div></div>${readersColumn(7)}</div></section>
 <section style="padding-top:0"><div class="wrap"><div class="band"><div><span class="chip cat-scams">Scam Checker</span><h2>Got a message that feels off?</h2><p>Paste any SMS, WhatsApp or email into our Scam Checker. In one second it highlights the tricks fraudsters use, from fake reversals to job fees. Then warn others on Scam Radar.</p><a class="btn gold" href="${u('/scam-checker/')}">Check a message now</a></div>
 <div><div class="fake-sms"><small>From: 0712 xxx xxx</small>Dear customer, <mark>you have won</mark> KSh 50,000 in the Safaricom promotion. Send <mark>KSh 500 processing fee</mark> to this number <mark>within 1 hour</mark> to claim.</div><span class="risk">High risk: 3 warning signs</span></div></div></div></section>
 <section><div class="wrap comm"><div><span class="chip cat-community">Community</span><h2>Your story belongs here</h2><p style="color:var(--muted);margin:0 0 18px">Started a hustle, beaten a scammer, found a tool that saves you money? Create a free account, write it in your own words and share it straight to WhatsApp. Every story is reviewed before it goes live, so the community stays safe and useful.</p><a class="btn" href="${u('/write/')}">Share your story</a> <a class="btn ghost" style="color:var(--ink)" href="${u('/community/')}">Read the community</a></div>
@@ -101,15 +112,22 @@ for (const [k, c] of Object.entries(CATS)) {
 for (const s of news.concat(comm)) {
   const related = news.filter((x) => x !== s && (s.community || x.cat === s.cat)).concat(news.filter((x) => x !== s)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
   const ld = { '@context': 'https://schema.org', '@type': 'NewsArticle', headline: s.title, description: s.dek || '', image: [SITE + '/img/og/' + s.slug + '.png'], datePublished: s.date, publisher: { '@type': 'Organization', name: 'Tech na Pesa', logo: { '@type': 'ImageObject', url: SITE + '/img/icon.png' } }, author: s.community ? { '@type': 'Person', name: s.author } : { '@type': 'Organization', name: 'Tech na Pesa' } };
-  const by = s.community ? `<div class="byline"><span class="avatar">${esc((s.author || '?').slice(0, 1).toUpperCase())}</span><span>By <b>${esc(s.author)}</b>${s.county ? ', ' + esc(s.county) : ''} &middot; ${fmt(s.date)} &middot; Community story</span></div>` : `<div class="byline"><span class="avatar">T</span><span>Tech na Pesa newsroom &middot; ${fmt(s.date)}</span></div>`;
+  const by = s.community ? `<div class="byline"><span class="avatar">${esc((s.author || '?').slice(0, 1).toUpperCase())}</span><span>By <a href="${whref(s)}" style="text-decoration:underline"><b>${esc(s.author)}</b></a>${s.county ? ', ' + esc(s.county) : ''} &middot; ${fmt(s.date)} &middot; Community story</span></div>` : `<div class="byline"><span class="avatar">T</span><span>Tech na Pesa newsroom &middot; ${fmt(s.date)}</span></div>`;
   const html = `<article class="art cat-${s.community ? 'community' : s.cat}"><span class="chip">${s.community ? 'Community' : CATS[s.cat].name}</span><h1>${esc(s.title)}</h1>${s.dek ? `<p class="dek">${esc(s.dek)}</p>` : ''}${by}
 <div class="cover"><img src="${img(s)}" alt=""></div>${shareBar(s)}<div class="body">${bodyHtml(s.body)}</div>${s.q ? `<div class="ask">${esc(s.q)}</div>` : ''}${shareBar(s)}
 ${s.sources && s.sources.length ? `<div class="src">Sources: ${s.sources.map((x) => `<a href="${esc(x.url)}" rel="noopener nofollow">${esc(x.name)}</a>`).join(', ')}</div>` : ''}
 ${s.community ? `<div class="note info">This story was written by a member of the Tech na Pesa community and reviewed by our editors before publishing. Views are the writer's own. <a href="${u('/write/')}" style="text-decoration:underline">Share yours</a>.</div>` : ''}</article>
-<section style="padding-top:20px"><div class="wrap"><div class="sec-h"><h2>Read next</h2></div><div class="grid">${related.map(card).join('')}</div></div></section>`;
+<section style="padding-top:20px"><div class="wrap with-readers"><div><div class="sec-h"><h2>Read next</h2></div><div class="grid g2">${related.slice(0, 2).map(card).join('')}</div></div>${readersColumn(5)}</div></section>`;
   write((s.community ? 'community/' : 'story/') + s.slug + '/index.html', layout({ title: s.title, desc: s.dek, canon: SITE + href(s).replace(BASE, ''), image: u(`/img/og/${s.slug}.png`), type: 'article', body: html, extraHead: `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>` }));
 }
 
+// writer pages: every reader who has published gets a page with their name and all their stories
+const writers = {}; for (const s of comm) (writers[wslug(s)] = writers[wslug(s)] || []).push(s);
+for (const [k, list] of Object.entries(writers)) {
+  const w = list[0];
+  write(`writers/${k}/index.html`, layout({ title: w.author + ' on Tech na Pesa', desc: `Stories by ${w.author}${w.county ? ' from ' + w.county : ''} on Tech na Pesa.`, canon: `${SITE}/writers/${k}/`, on: 'community',
+    body: `<div class="pagehead cat-community"><div class="wrap" style="display:flex;gap:20px;align-items:center"><span class="avatar" style="width:84px;height:84px;font-size:36px;flex:none">${initial(w.author)}</span><div><span class="chip">Tech na Pesa writer</span><h1>${esc(w.author)}</h1><p>${w.county ? esc(w.county) + ' &middot; ' : ''}${list.length} published ${list.length === 1 ? 'story' : 'stories'}</p></div></div></div><section><div class="wrap"><div class="grid">${list.map(card).join('')}</div></div></section>` }));
+}
 // scam checker and radar
 write('scam-checker/index.html', layout({ title: 'Scam Checker and Scam Radar', desc: 'Paste a suspicious SMS, WhatsApp or email and see the warning signs in one second. Then warn other Kenyans on Scam Radar.', canon: SITE + '/scam-checker/', on: 'checker',
   body: `<div class="pagehead cat-scams"><div class="wrap"><span class="chip">Free tool</span><h1>Scam Checker</h1><p>Paste any message you are unsure about. We highlight the tricks fraudsters use. Nothing you paste here leaves your phone unless you choose to report it.</p></div></div>
@@ -126,7 +144,7 @@ write('scam-checker/index.html', layout({ title: 'Scam Checker and Scam Radar', 
 const sb = `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script><script src="${u('/config.js')}"></script><script src="${u('/community.js')}"></script>`;
 write('community/index.html', layout({ title: 'Community stories', desc: 'Stories by Kenyans about money, hustles, tech and beating scams, reviewed by our editors.', canon: SITE + '/community/', on: 'community',
   body: `<div class="pagehead cat-community"><div class="wrap"><span class="chip">Community</span><h1>Stories by Kenyans, for Kenyans</h1><p>Real experiences with money, hustles, tech and scams. Every story is reviewed before it goes live.</p><p style="margin-top:16px"><a class="btn" href="${u('/write/')}">Share your story</a></p></div></div>
-<section><div class="wrap">${comm.length ? `<div class="grid">${comm.map(card).join('')}</div>` : `<div class="empty"><h3 style="font-family:var(--head);color:var(--ink);margin:0 0 6px">Be the first voice here</h3>The community opens with your story. <a href="${u('/write/')}" style="text-decoration:underline">Write one now</a>.</div>`}</div></section>` }));
+${Object.keys(writers).length ? `<section style="padding-bottom:0"><div class="wrap"><div class="sec-h"><h2>Our writers</h2></div><div class="wall">${Object.entries(writers).map(([k, l]) => `<a href="${u('/writers/' + k + '/')}"><span class="avatar">${initial(l[0].author)}</span><b>${esc(l[0].author)}</b><small>${l.length} ${l.length === 1 ? 'story' : 'stories'}</small></a>`).join('')}</div></div></section>` : ''}<section><div class="wrap">${comm.length ? `<div class="grid">${comm.map(card).join('')}</div>` : `<div class="empty"><h3 style="font-family:var(--head);color:var(--ink);margin:0 0 6px">Be the first voice here</h3>The community opens with your story. <a href="${u('/write/')}" style="text-decoration:underline">Write one now</a>.</div>`}</div></section>` }));
 write('write/index.html', layout({ title: 'Share your story', canon: SITE + '/write/', on: 'community',
   body: `<div class="pagehead cat-community"><div class="wrap"><span class="chip">Community</span><h1>Share your story</h1><p>Write about a hustle, a money lesson, a scam you beat or a tool that helps. Our editors review every story, usually within a few hours.</p></div></div>
 <section><div class="wrap two"><div class="panel" id="writer"><div class="note info">Loading...</div></div><div class="panel"><h2 style="font-family:var(--head);margin:0 0 10px">What gets published</h2><ul style="padding-left:20px;margin:0"><li>True, first hand experiences and useful tips.</li><li>Clear writing in English, at least 80 words.</li><li>No naming or accusing private people, no phone numbers.</li><li>No promotions, referral links or get rich quick schemes.</li><li>No hate, insults or politics of division.</li></ul><p class="hint">Full details in our <a href="${u('/rules/')}" style="text-decoration:underline">community rules</a>.</p></div></div></section>${sb}` }));
@@ -159,7 +177,7 @@ write('404.html', layout({ title: 'Page not found', body: `<section><div class="
 // feed, sitemap, robots
 const all = news.concat(comm).sort((a, b) => String(b.date).localeCompare(a.date));
 write('feed.xml', `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Tech na Pesa</title><link>${SITE}/</link><description>Tech, money and digital life in Kenya</description>${all.slice(0, 30).map((s) => `<item><title>${esc(s.title)}</title><link>${SITE}${href(s).replace(BASE, '')}</link><guid>${SITE}${href(s).replace(BASE, '')}</guid><pubDate>${new Date(s.date).toUTCString()}</pubDate><description>${esc(s.dek || '')}</description></item>`).join('')}</channel></rss>`);
-const urls = ['/', '/scam-checker/', '/community/', '/write/', '/rules/', '/privacy/', '/terms/'].concat(Object.keys(CATS).map((k) => `/c/${k}/`)).concat(all.map((s) => href(s).replace(BASE, '')));
+const urls = ['/', '/scam-checker/', '/community/', '/write/', '/rules/', '/privacy/', '/terms/'].concat(Object.keys(CATS).map((k) => `/c/${k}/`)).concat(all.map((s) => href(s).replace(BASE, ''))).concat(Object.keys(writers).map((k) => `/writers/${k}/`));
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${SITE}${x}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /me/\nSitemap: ${SITE}/sitemap.xml\n`);
 if (process.env.CNAME) write('CNAME', process.env.CNAME + '\n');

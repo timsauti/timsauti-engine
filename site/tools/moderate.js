@@ -46,7 +46,7 @@ async function stories() {
     }
     if (!ok) { await patch('stories', s.id, { status: 'rejected', reason: scrub(reason).slice(0, 300), reviewed_at: new Date().toISOString() }); console.log('declined', s.id); continue; }
     const slug = slugify(v.title || s.title) + '-' + s.id.slice(0, 6);
-    const rec = { slug, title: (v.title || s.title).trim(), dek: v.dek || '', body: v.paragraphs.map(scrub), q: v.question || '', author: prof.display_name || 'A reader', county: prof.county || s.county || '', date: new Date().toISOString().slice(0, 10), cat: s.category, id: s.id };
+    const rec = { slug, title: (v.title || s.title).trim(), dek: v.dek || '', body: v.paragraphs.map(scrub), q: v.question || '', author: prof.display_name || 'A reader', county: prof.county || s.county || '', date: new Date().toISOString().slice(0, 10), cat: s.category, id: s.id, author_key: require('crypto').createHash('sha1').update(s.author).digest('hex').slice(0, 6) };
     if (useImage) { const ext = /png/.test(image.mime) ? 'png' : /webp/.test(image.mime) ? 'webp' : 'jpg'; fs.mkdirSync(path.join(ROOT, 'static', 'img', 'community'), { recursive: true }); fs.writeFileSync(path.join(ROOT, 'static', 'img', 'community', slug + '.' + ext), image.buf); rec.photo = `img/community/${slug}.${ext}`; }
     fs.mkdirSync(path.join(ROOT, 'content', 'community'), { recursive: true });
     fs.writeFileSync(path.join(ROOT, 'content', 'community', slug + '.json'), JSON.stringify(rec, null, 1));
