@@ -162,3 +162,77 @@ drop policy if exists "comments own delete" on public.comments;
 create policy "comments own delete" on public.comments for update using (auth.uid() = user_id) with check (auth.uid() = user_id and status = 'deleted');
 create or replace view public.comment_counts with (security_invoker = true) as
   select slug, count(*)::int as n from public.comments where status = 'visible' group by slug;
+
+-- ===== Round 3: sponsored challenges, entries and votes =====
+-- challenge dates live here so the database itself refuses entries or votes outside the open window (the robot copies them from the website files)
+create table if not exists public.challenges (
+  slug text primary key,
+  title text not null,
+  opens timestamptz not null,
+  entries_close timestamptz not null,
+  voting_closes timestamptz not null
+);
+alter table public.challenges enable row level security;
+drop policy if exists "challenges read" on public.challenges;
+create policy "challenges read" on public.challenges for select using (true);
+
+create table if not exists public.entries (
+  id uuid primary key default gen_random_uuid(),
+  challenge text not null references public.challenges(slug) on delete cascade,
+  author uuid not null references auth.users(id) on delete cascade,
+  title text not null check (char_length(title) between 5 and 90),
+  description text not null check (char_length(description) between 40 and 3000),
+  image_path text,
+  status text not null default 'pending' check (status in ('pending','approved','rejected','withdrawn')),
+  reason text,
+  slug text unique,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  unique (challenge, author)
+);
+alter table public.entries enable row level security;
+drop policy if exists "entries read" on public.entries;
+create policy "entries read" on public.entries for select using (status = 'approved' or auth.uid() = author);
+drop policy if exists "entries submit" on public.entries;
+create policy "entries submit" on public.entries for insert with check (
+  auth.uid() = author and status = 'pending' and slug is null and reason is null
+  and exists (select 1 from public.profiles p where p.id = auth.uid())
+  and exists (select 1 from public.challenges c where c.slug = entries.challenge and now() between c.opens and c.entries_close));
+drop policy if exists "entries withdraw" on public.entries;
+create policy "entries withdraw" on public.entries for update using (auth.uid() = author) with check (auth.uid() = author and status = 'withdrawn');
+
+-- votes: one vote per account per challenge (you can move it), only while voting is open, never for your own entry
+create table if not exists public.votes (
+  challenge text not null references public.challenges(slug) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  entry_id uuid not null references public.entries(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (challenge, user_id)
+);
+alter table public.votes enable row level security;
+drop policy if exists "votes read own" on public.votes;
+create policy "votes read own" on public.votes for select using (auth.uid() = user_id);
+drop policy if exists "votes cast" on public.votes;
+create policy "votes cast" on public.votes for insert with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.challenges c where c.slug = votes.challenge and now() between c.opens and c.voting_closes)
+  and exists (select 1 from public.entries e where e.id = votes.entry_id and e.challenge = votes.challenge and e.status = 'approved' and e.author <> auth.uid()));
+drop policy if exists "votes move" on public.votes;
+create policy "votes move" on public.votes for delete using (auth.uid() = user_id and exists (select 1 from public.challenges c where c.slug = votes.challenge and now() < c.voting_closes));
+-- public totals only (who voted for whom stays private)
+create or replace view public.vote_counts as select challenge, entry_id, count(*)::int as n from public.votes group by challenge, entry_id;
+grant select on public.vote_counts to anon, authenticated;
+
+-- companies asking to sponsor a challenge (anyone can send; only the owner can read, through the robot)
+create table if not exists public.sponsor_leads (
+  id uuid primary key default gen_random_uuid(),
+  company text not null check (char_length(company) between 2 and 120),
+  contact_name text not null check (char_length(contact_name) between 2 and 80),
+  phone_or_email text not null check (char_length(phone_or_email) between 5 and 120),
+  message text check (char_length(message) <= 1500),
+  notified boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.sponsor_leads enable row level security;
+drop policy if exists "leads send" on public.sponsor_leads;
+create policy "leads send" on public.sponsor_leads for insert with check (notified = false);

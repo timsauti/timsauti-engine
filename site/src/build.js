@@ -18,6 +18,9 @@ const fmt = (d) => new Date(d + (String(d).length === 10 ? 'T09:00:00+03:00' : '
 const read = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))) : [];
 const DATA = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'content', 'data', f), 'utf8')); } catch (e) { return d; } };
 const TOOLS = DATA('tools.json', {}), RATES = DATA('rates.json', null), WINNERS = DATA('winners.json', []).filter((w) => !w.none);
+const CHALLENGES = read(path.join(ROOT, 'content', 'challenges')).filter((c) => c.status !== 'draft').sort((a, b) => String(b.opens).localeCompare(a.opens));
+const ENTRIES = read(path.join(ROOT, 'content', 'entries'));
+const chState = (c) => { const n = Date.now(); return n < Date.parse(c.opens) ? 'soon' : n < Date.parse(c.entriesClose) ? 'entries' : n < Date.parse(c.votingCloses) ? 'voting' : 'closed'; };
 const news = read(path.join(ROOT, 'content', 'stories')).sort((a, b) => String(b.date).localeCompare(a.date));
 const comm = read(path.join(ROOT, 'content', 'community')).map((s) => Object.assign({ community: true }, s)).sort((a, b) => String(b.date).localeCompare(a.date));
 const img = (s) => u(`/img/cards/${s.slug}.png`);
@@ -73,8 +76,8 @@ function layout({ title, desc, canon, image, body, on, type, extraHead }) {
   const d = desc || 'Fast, checked tech and money news for Kenya: M-PESA, phones and apps, scam alerts, real side hustles, jobs and simple how to guides.';
   const ogi = image ? SITE + image.replace(BASE, '') : SITE + '/img/og.png';
   const ticker = news.concat(comm).sort((a, b) => String(b.date).localeCompare(a.date)).slice(0, 10).map((s) => `<a href="${href(s)}">${esc(s.title)}</a>`).join('');
-  const nav = [['tech', 'Tech'], ['money', 'Money'], ['scams', 'Scam Alerts'], ['hustles', 'Hustles and Jobs'], ['howto', 'How To']].map(([k, n]) => `<a href="${u('/c/' + k + '/')}"${on === k ? ' class="on"' : ''}>${n}</a>`).join('')
-    + `<a href="${u('/tools/')}"${on === 'tools' ? ' class="on"' : ''}>Money Tools</a><a href="${u('/scam-checker/')}"${on === 'checker' ? ' class="on"' : ''}>Scam Checker</a><a href="${u('/community/')}"${on === 'community' ? ' class="on"' : ''}>Community</a>`;
+  const nav = [['tech', 'Tech'], ['money', 'Money'], ['scams', 'Scam Alerts'], ['hustles', 'Hustles'], ['howto', 'How To']].map(([k, n]) => `<a href="${u('/c/' + k + '/')}"${on === k ? ' class="on"' : ''}>${n}</a>`).join('')
+    + `<a href="${u('/challenges/')}"${on === 'challenges' ? ' class="on"' : ''}>Challenges</a><a href="${u('/tools/')}"${on === 'tools' ? ' class="on"' : ''}>Money Tools</a><a href="${u('/scam-checker/')}"${on === 'checker' ? ' class="on"' : ''}>Scam Checker</a><a href="${u('/community/')}"${on === 'community' ? ' class="on"' : ''}>Community</a>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(t)}</title><meta name="description" content="${esc(d)}"><link rel="canonical" href="${esc(canon || SITE + '/')}">
 <meta property="og:site_name" content="Tech na Pesa"><meta property="og:title" content="${esc(title || 'Tech na Pesa')}"><meta property="og:description" content="${esc(d)}">
@@ -127,6 +130,11 @@ function pesaToday() {
 <div class="pt1 calc-mini"><small>M-PESA charge calculator</small><div class="cm"><input type="number" inputmode="numeric" min="1" placeholder="Amount in KSh" data-mini-amount><div data-mini-out><em>Type an amount</em></div></div></div>
 </div></div></div><script>window.TNP_TARIFF=${JSON.stringify((TOOLS.mpesa || {}).bands || [])};</script>`;
 }
+function challengeBanner() {
+  const c = CHALLENGES.find((x) => ['entries', 'voting'].includes(chState(x))); if (!c) return '';
+  const st = chState(c);
+  return `<div class="wrap"><a class="chbanner" href="${u('/challenges/' + c.slug + '/')}"><div><span class="chip" style="color:#2fe6a7">${st === 'entries' ? 'Challenge open for entries' : 'Voting is open'}</span><h3>${esc(c.title)}</h3><p>Prize: ${esc(c.prize || '')}${c.sponsor ? ' &middot; Sponsored by ' + esc(c.sponsor.name) : ''}</p></div><span class="btn gold">${st === 'entries' ? 'Enter now' : 'Vote now'}</span></a></div>`;
+}
 function winnerBanner() {
   const w = WINNERS[WINNERS.length - 1]; if (!w) return '';
   const s = comm.find((x) => x.slug === w.slug); const m = new Date(w.month + '-15').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
@@ -141,7 +149,7 @@ const home = `
 <a class="lead cat-${lead.cat}" href="${href(lead)}"><img src="${img(lead)}" alt=""><div class="txt"><span class="chip">${CATS[lead.cat].name}</span><h1>${esc(lead.title)}</h1><p>${esc(lead.dek)}</p></div></a>
 <div class="side">${rest.slice(0, 4).map((s) => `<a class="mini cat-${s.cat}" href="${href(s)}"><img src="${img(s)}" alt=""><div><span class="chip">${CATS[s.cat].name}</span><h3>${esc(s.title)}</h3></div></a>`).join('')}</div>
 </div></div>
-${pesaToday()}${winnerBanner()}
+${pesaToday()}${challengeBanner()}${winnerBanner()}
 <section class="feedsec"><div class="wrap"><div class="sec-h"><div><span class="chip cat-community">Live from our readers</span><h2>Community Feed</h2></div><a href="${u('/community/')}">See all</a></div><div class="feedgrid"><div class="feed">${feed(comm, 8)}</div>${feedSide()}</div></div></section>${sbScripts}
 <section><div class="wrap"><div class="sec-h"><h2>Latest from the newsroom</h2><a href="${u('/c/tech/')}">All sections</a></div><div class="grid">${news.slice(0, 6).map(card).join('')}</div></div></section>
 <section style="padding-top:0"><div class="wrap"><div class="band"><div><span class="chip cat-scams">Scam Checker</span><h2>Got a message that feels off?</h2><p>Paste any SMS, WhatsApp or email into our Scam Checker. In one second it highlights the tricks fraudsters use, from fake reversals to job fees. Then warn others on Scam Radar.</p><a class="btn gold" href="${u('/scam-checker/')}">Check a message now</a></div>
@@ -220,6 +228,45 @@ write('me/index.html', layout({ title: 'My stories', canon: SITE + '/me/', on: '
 <div class="panel" id="rates" style="margin-top:22px"><h2 class="h2s">Shilling exchange rates</h2>${r ? `<div class="fuel"><div><small>1 US dollar</small><b>${ksh(r.usd)}</b></div><div><small>1 euro</small><b>${ksh(r.eur)}</b></div><div><small>1 British pound</small><b>${ksh(r.gbp)}</b></div></div><p class="hint">Market rates for ${fmt(r.date)} from <a href="${esc(r.url)}" rel="noopener nofollow">${esc(r.source)}</a>. Banks and forex bureaus add their own margin. 1 KSh buys about ${r.ugx} Uganda shillings and ${r.tzs} Tanzania shillings.</p>` : '<p class="hint">Rates refresh every day. Check back shortly.</p>'}</div></div></div></section>
 <script>window.TNP_TARIFF=${JSON.stringify(m.bands)};window.TNP_FUEL=${JSON.stringify({ petrol: f.petrol, diesel: f.diesel })};</script>` }));
 }
+// challenges
+const fmtT = (d) => new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Nairobi' });
+const entryHref = (e) => u(`/challenges/${e.challenge}/${e.slug}/`);
+const sponsorBlock = (c) => c.sponsor ? `<a class="sponsor" href="${esc(c.sponsor.url || '#')}" rel="noopener sponsored">${c.sponsor.logo ? `<img src="${u('/' + c.sponsor.logo)}" alt="">` : ''}<span><small>Sponsored by</small><b>${esc(c.sponsor.name)}</b></span></a>` : '';
+const entryCard = (e, c) => `<div class="ecard" data-entry="${esc(e.id)}"><a href="${entryHref(e)}">${e.photo ? `<img loading="lazy" src="${u('/' + e.photo)}" alt="">` : `<img class="noph" loading="lazy" src="${u('/img/cards/' + e.slug + '.png')}" alt="">`}</a><div class="ein"><div class="eby">${avatarHtml(e, 34)}<span><b>${esc(e.author)}</b><small>${esc(e.county || '')}</small></span></div><a href="${entryHref(e)}" class="et">${esc(e.title)}</a>
+<div class="evote"><span class="vc" data-votes="${esc(e.id)}">0 votes</span>${['entries', 'voting'].includes(chState(c)) ? `<button class="btn" data-vote="${esc(e.id)}" data-challenge="${esc(c.slug)}">Vote</button>` : ''}</div></div></div>`;
+write('challenges/index.html', layout({ title: 'Challenges', desc: 'Monthly challenges for Kenyans: show your work, get votes from friends and win prizes from our sponsors.', canon: SITE + '/challenges/', on: 'challenges',
+  body: `<div class="pagehead cat-community"><div class="wrap"><span class="chip">Win prizes</span><h1>Tech na Pesa Challenges</h1><p>Every month, a new challenge. Show your work, get your friends to vote, and win prizes from our sponsors. Entry is always free.</p><p style="margin-top:16px"><a class="btn gold" href="${u('/sponsor/')}">Sponsor a challenge</a></p></div></div>
+<section><div class="wrap">${CHALLENGES.length ? `<div class="grid">${CHALLENGES.map((c) => { const st = chState(c), n = ENTRIES.filter((e) => e.challenge === c.slug).length; return `<a class="card chcard" href="${u('/challenges/' + c.slug + '/')}"><div class="chtop st-${st}"><span>${{ soon: 'Opens ' + fmtT(c.opens), entries: 'Open for entries', voting: 'Voting open', closed: 'Closed' }[st]}</span><b>${esc(c.prize || '')}</b></div><div class="in"><h3>${esc(c.title)}</h3><p>${esc(c.short || c.brief || '')}</p><span class="meta">${n} ${n === 1 ? 'entry' : 'entries'}${c.sponsor ? ' &middot; Sponsored by ' + esc(c.sponsor.name) : ''}</span></div></a>`; }).join('')}</div>`
+    : `<div class="empty"><h3 style="font-family:var(--head);color:var(--ink);margin:0 0 6px">Our first challenge is on the way</h3>Follow Tech na Pesa on Facebook to hear the moment it opens. Are you a company or institution? <a href="${u('/sponsor/')}" style="text-decoration:underline">Sponsor the first one</a>.</div>`}</div></section>` }));
+for (const c of CHALLENGES) {
+  const st = chState(c), list = ENTRIES.filter((e) => e.challenge === c.slug);
+  const winner = c.result && c.result.winner ? list.find((e) => e.slug === c.result.winner) : null;
+  write(`challenges/${c.slug}/index.html`, layout({ title: c.title, desc: (c.short || c.brief || '').slice(0, 160), canon: `${SITE}/challenges/${c.slug}/`, on: 'challenges', image: c.image ? u('/' + c.image) : null,
+    body: `<div class="pagehead cat-community chhead"><div class="wrap"><div><span class="chip">${{ soon: 'Coming soon', entries: 'Open for entries', voting: 'Voting open', closed: 'Challenge closed' }[st]}</span><h1>${esc(c.title)}</h1><p>${esc(c.brief || '')}</p>
+<div class="chfacts"><div><small>Prize</small><b>${esc(c.prize || '')}</b></div><div><small>Entries close</small><b>${fmtT(c.entriesClose)}</b></div><div><small>Voting closes</small><b>${fmtT(c.votingCloses)}</b></div></div>
+<div class="countdown" data-until="${esc(st === 'soon' ? c.opens : st === 'entries' ? c.entriesClose : c.votingCloses)}" data-label="${st === 'soon' ? 'Opens in' : st === 'entries' ? 'Entries close in' : 'Voting closes in'}"></div></div>${sponsorBlock(c)}</div></div>
+${winner ? `<section style="padding-bottom:0"><div class="wrap"><a class="winner" href="${entryHref(winner)}">${avatarHtml(winner, 64)}<div><span class="chip" style="color:#f4b631">Winner</span><h3>${esc(winner.title)}</h3><p>By ${esc(winner.author)}${winner.county ? ', ' + esc(winner.county) : ''} &middot; ${(c.result.top[0] || {}).votes || ''} votes</p></div></a></div></section>` : ''}
+<section><div class="wrap two"><div><div class="sec-h"><h2>Entries</h2><span class="hint">${list.length} so far</span></div>${list.length ? `<div class="egrid">${list.map((e) => entryCard(e, c)).join('')}</div>` : '<div class="empty">No entries yet. Be the first!</div>'}</div>
+<div><div class="panel" id="enter" data-enter="${esc(c.slug)}" data-photo="${c.needsPhoto ? 1 : 0}" data-state="${st}"><h2 class="h2s">How to take part</h2><ol class="rules">${(c.howTo || ['Create a free Tech na Pesa account.', 'Submit your entry below. Our editors check it, usually within an hour.', 'Once approved, share your entry link on WhatsApp and Facebook so friends can vote.', 'The entry with the most votes when voting closes wins.']).map((x) => `<li>${esc(x)}</li>`).join('')}</ol><div id="enterbox"></div></div>
+<div class="panel" style="margin-top:22px"><h2 class="h2s">Leaderboard</h2><div data-board-ch="${esc(c.slug)}"><div class="hint">Loading votes...</div></div></div>
+<div class="panel" style="margin-top:22px"><h2 class="h2s">Rules</h2><ul class="rules">${(c.rules || []).concat(['Entry is free. Open to people in Kenya.', 'One entry per person. One vote per account, and you can move your vote until voting closes.', 'You cannot vote for yourself. Votes that look fake or bought are removed, and entries that cheat are disqualified.', 'Winners are checked by Tech na Pesa before prizes are handed over' + (c.sponsor ? ' by ' + c.sponsor.name : '') + '.']).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></div></section>${sbScripts}` }));
+  for (const e of list) {
+    const url = `${SITE}/challenges/${c.slug}/${e.slug}/`, ask = `Please vote for my entry "${e.title}" in the ${c.title} on Tech na Pesa. It takes one minute: ${url}`;
+    write(`challenges/${c.slug}/${e.slug}/index.html`, layout({ title: `Vote for ${e.author}: ${e.title}`, desc: `${e.author} entered the ${c.title}. Vote now.`, canon: url, on: 'challenges', image: u('/img/og/' + e.slug + '.png'), type: 'article',
+      body: `<article class="art"><a class="chip cat-community" href="${u('/challenges/' + c.slug + '/')}">${esc(c.title)}</a><h1>${esc(e.title)}</h1><div class="byline">${avatarHtml(e, 44)}<span>Entry by <b>${esc(e.author)}</b>${e.county ? ', ' + esc(e.county) : ''}</span></div>
+<div class="cover">${e.photo ? `<img src="${u('/' + e.photo)}" alt="">` : `<img src="${u('/img/cards/' + e.slug + '.png')}" alt="">`}</div>
+<div class="bigvote" data-entry="${esc(e.id)}"><div><b data-votes="${esc(e.id)}">0 votes</b><small>${{ soon: '', entries: 'Voting is open', voting: 'Voting closes ' + fmtT(c.votingCloses), closed: 'Voting has closed' }[st]}</small></div>${['entries', 'voting'].includes(st) ? `<button class="btn gold" data-vote="${esc(e.id)}" data-challenge="${esc(c.slug)}">Vote for ${esc(String(e.author).split(' ')[0])}</button>` : ''}</div>
+<div class="share"><a class="wa" href="https://wa.me/?text=${encodeURIComponent(ask)}" rel="noopener">${ICON.wa}Ask friends on WhatsApp</a><a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" rel="noopener">${ICON.fb}Facebook</a><button data-copy="${esc(url)}">${ICON.link}Copy link</button></div>
+<div class="body">${bodyHtml(e.body || [])}</div>${sponsorBlock(c)}<p><a href="${u('/challenges/' + c.slug + '/')}" style="text-decoration:underline">See all entries in ${esc(c.title)}</a></p></article>${sbScripts}` }));
+  }
+}
+// sponsor page: how companies and institutions sponsor a challenge
+write('sponsor/index.html', layout({ title: 'Sponsor a challenge', desc: 'Put your brand in front of thousands of engaged Kenyans by sponsoring a Tech na Pesa challenge.', canon: SITE + '/sponsor/', on: 'challenges',
+  body: `<div class="pagehead cat-money"><div class="wrap"><span class="chip">For companies and institutions</span><h1>Sponsor a challenge</h1><p>Your brand at the centre of a month of creativity. Entrants share their entries with friends on WhatsApp and Facebook, and every share carries your name.</p></div></div>
+<section><div class="wrap two"><div><div class="panel"><h2 class="h2s">What you get</h2><ul class="rules"><li>Your name and logo on the challenge page, every entry page and every vote link shared on WhatsApp.</li><li>A challenge theme built around your brand or cause, for example best small business idea, best savings tip, best tech innovation by students.</li><li>Launch, reminder and winner posts on the Tech na Pesa Facebook Page.</li><li>A short report at the end: entries, votes, page visits and shares.</li><li>Your team can present the prize to the winner, with photos for your own channels.</li></ul></div>
+<div class="panel" style="margin-top:22px"><h2 class="h2s">Who it suits</h2><p style="margin:0">Banks, SACCOs, fintechs, telcos, phone and electronics shops, colleges and universities, county programmes, NGOs and any brand that wants young, digital Kenyans to know it.</p></div></div>
+<div class="panel" id="sponsorform"><h2 class="h2s">Talk to us</h2><p class="hint" style="margin-top:0">Leave your details and we will call you back with options and prices.</p><label>Company or institution</label><input id="sf_c" maxlength="120"><label>Your name</label><input id="sf_n" maxlength="80"><label>Phone or email</label><input id="sf_p" maxlength="120"><label>What would you like to sponsor? (optional)</label><textarea id="sf_m" maxlength="1500" style="min-height:110px"></textarea><button class="btn" id="sf_go" style="margin-top:14px">Send</button><div id="sf_st"></div></div></div></section>${sbScripts}` }));
+
 // monthly prize
 write('prize/index.html', layout({ title: 'Story of the Month: win KSh 500', desc: 'The best rated reader story every month wins KSh 500 sent by M-PESA.', canon: SITE + '/prize/', on: 'community',
   body: `<div class="pagehead cat-money"><div class="wrap"><span class="chip">Monthly prize</span><h1>Story of the Month: KSh 500</h1><p>Every month, the reader story with the best star rating wins KSh 500, sent by M-PESA. You, the readers, choose the winner.</p><p style="margin-top:16px"><a class="btn gold" href="${u('/write/')}">Write your story</a></p></div></div>
@@ -251,7 +298,7 @@ write('404.html', layout({ title: 'Page not found', body: `<section><div class="
 // feed, sitemap, robots
 const all = news.concat(comm).sort((a, b) => String(b.date).localeCompare(a.date));
 write('feed.xml', `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Tech na Pesa</title><link>${SITE}/</link><description>Tech, money and digital life in Kenya</description>${all.slice(0, 30).map((s) => `<item><title>${esc(s.title)}</title><link>${SITE}${href(s).replace(BASE, '')}</link><guid>${SITE}${href(s).replace(BASE, '')}</guid><pubDate>${new Date(s.date).toUTCString()}</pubDate><description>${esc(s.dek || '')}</description></item>`).join('')}</channel></rss>`);
-const urls = ['/', '/tools/', '/prize/', '/scam-checker/', '/community/', '/write/', '/rules/', '/privacy/', '/terms/'].concat(Object.keys(CATS).map((k) => `/c/${k}/`)).concat(all.map((s) => href(s).replace(BASE, ''))).concat(Object.keys(writers).map((k) => `/writers/${k}/`));
+const urls = ['/', '/challenges/', '/sponsor/', '/tools/', '/prize/', '/scam-checker/', '/community/', '/write/', '/rules/', '/privacy/', '/terms/'].concat(Object.keys(CATS).map((k) => `/c/${k}/`)).concat(all.map((s) => href(s).replace(BASE, ''))).concat(Object.keys(writers).map((k) => `/writers/${k}/`));
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${SITE}${x}</loc></url>`).join('')}</urlset>`);
 write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /me/\nSitemap: ${SITE}/sitemap.xml\n`);
 if (process.env.CNAME) write('CNAME', process.env.CNAME + '\n');

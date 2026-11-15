@@ -189,6 +189,75 @@
     el.innerHTML = rows.slice(0, 10).map(function (x, i) { var q = R[x.slug]; return '<a class="lb" href="' + B + '/community/' + x.slug + '/"><span class="rank">' + (i + 1) + '</span>' + face(P[x.author], 40) + '<span><b>' + esc(x.title) + '</b><small>' + esc((P[x.author] || {}).display_name || 'Reader') + ' &middot; ' + (q ? starsTxt(q.avg, q.n) + (q.n < 5 ? ', needs ' + (5 - q.n) + ' more to qualify' : '') : 'not rated yet') + '</small></span></a>'; }).join('');
   }
 
+
+  // ---------- challenges: countdown, entering, voting, leaderboard, sponsor enquiries
+  document.querySelectorAll('.countdown[data-until]').forEach(function (el) {
+    var end = Date.parse(el.dataset.until); if (isNaN(end)) return;
+    var tick = function () { var s = Math.max(0, Math.floor((end - Date.now()) / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; el.innerHTML = '<small>' + el.dataset.label + '</small>' + [[d, 'days'], [h, 'hrs'], [m, 'min'], [x, 'sec']].map(function (p) { return '<span><b>' + p[0] + '</b><i>' + p[1] + '</i></span>'; }).join(''); };
+    tick(); setInterval(tick, 1000);
+  });
+  async function voting() {
+    var btns = document.querySelectorAll('[data-vote]'), shows = document.querySelectorAll('[data-votes]'); if (!btns.length && !shows.length) return;
+    var chs = []; document.querySelectorAll('[data-challenge],[data-board-ch]').forEach(function (e) { var c = e.dataset.challenge || e.dataset.boardCh; if (chs.indexOf(c) < 0) chs.push(c); });
+    if (!live) { btns.forEach(function (b) { b.onclick = function () { alert('Voting opens with community accounts, very soon.'); }; }); return; }
+    var V = {}, r = chs.length ? await sb.from('vote_counts').select('entry_id,n').in('challenge', chs) : { data: [] }; (r.data || []).forEach(function (x) { V[x.entry_id] = x.n; });
+    var paint = function () { document.querySelectorAll('[data-votes]').forEach(function (e) { var n = V[e.dataset.votes] || 0; e.textContent = n + (n === 1 ? ' vote' : ' votes'); }); board(); };
+    var s = await sessP, mine = {};
+    if (s && chs.length) { var m = await sb.from('votes').select('challenge,entry_id').eq('user_id', s.user.id).in('challenge', chs); (m.data || []).forEach(function (x) { mine[x.challenge] = x.entry_id; }); }
+    var mark = function () { btns.forEach(function (b) { var on = mine[b.dataset.challenge] === b.dataset.vote; b.classList.toggle('voted', on); b.textContent = on ? 'Voted' : (b.dataset.label || (b.dataset.label = b.textContent)); }); };
+    btns.forEach(function (b) {
+      b.onclick = async function () {
+        if (!s) { location.href = B + '/join/?next=' + encodeURIComponent(location.pathname); return; }
+        var ch = b.dataset.challenge, id = b.dataset.vote, prev = mine[ch]; if (prev === id) return;
+        if (prev && !confirm('You already voted for another entry in this challenge. Move your vote here?')) return;
+        b.disabled = true;
+        if (prev) { var d = await sb.from('votes').delete().eq('challenge', ch).eq('user_id', s.user.id); if (d.error) { b.disabled = false; alert(d.error.message); return; } V[prev] = Math.max(0, (V[prev] || 1) - 1); }
+        var q = await sb.from('votes').insert({ challenge: ch, user_id: s.user.id, entry_id: id }); b.disabled = false;
+        if (q.error) { alert(/row-level/i.test(q.error.message) ? 'Voting is closed, or this is your own entry.' : q.error.message); if (prev) { V[prev]++; } paint(); return; }
+        mine[ch] = id; V[id] = (V[id] || 0) + 1; paint(); mark();
+      };
+    });
+    function board() {
+      document.querySelectorAll('[data-board-ch]').forEach(function (el) {
+        var cards = Array.prototype.slice.call(document.querySelectorAll('.ecard')); if (!cards.length) { el.innerHTML = '<div class="hint">No entries yet.</div>'; return; }
+        cards.sort(function (a, b) { return (V[b.dataset.entry] || 0) - (V[a.dataset.entry] || 0); });
+        el.innerHTML = cards.slice(0, 10).map(function (c, i) { var a = c.querySelector('.et'), who = c.querySelector('.eby b'); return '<a class="lb" href="' + a.getAttribute('href') + '"><span class="rank">' + (i + 1) + '</span><span><b>' + esc(a.textContent) + '</b><small>' + esc(who ? who.textContent : '') + ' &middot; ' + (V[c.dataset.entry] || 0) + ' votes</small></span></a>'; }).join('');
+      });
+    }
+    paint(); mark();
+  }
+  async function enter() {
+    var panel = document.querySelector('[data-enter]'); if (!panel) return; var box = $('enterbox'), ch = panel.dataset.enter, st = panel.dataset.state, photo = panel.dataset.photo === '1';
+    if (st !== 'entries') { box.innerHTML = '<div class="note info">' + (st === 'soon' ? 'Entries open soon.' : st === 'voting' ? 'Entries are closed. Voting is open: support your favourite!' : 'This challenge has closed.') + '</div>'; return; }
+    if (!live) { box.innerHTML = '<div class="note info">Entries open with community accounts, very soon.</div>'; return; }
+    var s = await sessP; if (!s) { box.innerHTML = '<a class="btn" href="' + B + '/join/?next=' + encodeURIComponent(location.pathname) + '">Sign in to enter</a>'; return; }
+    var me = await profile(s.user.id); if (!me || !me.display_name) { location.href = B + '/join/?next=' + encodeURIComponent(location.pathname); return; }
+    var ex = await sb.from('entries').select('status,reason,slug').eq('challenge', ch).eq('author', s.user.id).maybeSingle();
+    if (ex.data && ex.data.status !== 'withdrawn') { var x = ex.data; box.innerHTML = x.status === 'approved' ? '<div class="note ok">Your entry is live! Share it so friends can vote.</div><a class="btn" href="' + location.pathname.replace(/\/$/, '') + '/' + x.slug + '/">Open my entry</a>' : x.status === 'pending' ? '<div class="note info">Your entry is with our editors. You will see it here once approved.</div>' : '<div class="note err">Your entry was not accepted. ' + esc(x.reason || '') + '</div>'; return; }
+    box.innerHTML = '<label>Title of your entry</label><input id="e_t" maxlength="90"><label>Describe your entry</label><textarea id="e_d" maxlength="3000" placeholder="What is it, how did you make it, why does it matter?"></textarea><label>Photo of your work' + (photo ? '' : ' (optional)') + '</label><input id="e_p" type="file" accept="image/jpeg,image/png,image/webp"><button class="btn" id="e_go" style="margin-top:14px">Submit my entry</button><div id="e_st"></div>';
+    $('e_go').onclick = async function () {
+      var t = $('e_t').value.trim(), d = $('e_d').value.trim(), f = $('e_p').files[0], o = $('e_st');
+      if (t.length < 5) return o.innerHTML = '<div class="note err">Please give your entry a title.</div>';
+      if (d.length < 40) return o.innerHTML = '<div class="note err">Please describe your entry in a few sentences.</div>';
+      if (photo && !f) return o.innerHTML = '<div class="note err">This challenge needs a photo of your work.</div>';
+      if (f && f.size > 4 * 1024 * 1024) return o.innerHTML = '<div class="note err">Please use a photo under 4 MB.</div>';
+      $('e_go').disabled = true; var ip = null;
+      if (f) { ip = s.user.id + '/entry-' + Date.now() + '.' + (f.type.split('/')[1] || 'jpg'); var up = await sb.storage.from('story-images').upload(ip, f, { contentType: f.type }); if (up.error) { $('e_go').disabled = false; return o.innerHTML = '<div class="note err">' + esc(up.error.message) + '</div>'; } }
+      var r = await sb.from('entries').insert({ challenge: ch, author: s.user.id, title: t, description: d, image_path: ip }); $('e_go').disabled = false;
+      o.innerHTML = r.error ? '<div class="note err">' + esc(/duplicate|unique/i.test(r.error.message) ? 'You have already entered this challenge.' : /row-level/i.test(r.error.message) ? 'Entries are closed for this challenge.' : r.error.message) + '</div>' : '<div class="note ok"><b>Entry received!</b> Our editors will check it shortly. Once approved, you will get a page with a WhatsApp button to ask friends to vote.</div>';
+    };
+  }
+  function sponsorForm() {
+    var go = $('sf_go'); if (!go) return;
+    go.onclick = async function () {
+      var c = $('sf_c').value.trim(), n = $('sf_n').value.trim(), p = $('sf_p').value.trim(), m = $('sf_m').value.trim(), o = $('sf_st');
+      if (c.length < 2 || n.length < 2 || p.length < 5) return o.innerHTML = '<div class="note err">Please fill in your company, name and phone or email.</div>';
+      if (!live) return o.innerHTML = '<div class="note info">Thank you. Our enquiry form opens very soon. Meanwhile, reach us through our Facebook Page.</div>';
+      go.disabled = true; var r = await sb.from('sponsor_leads').insert({ company: c, contact_name: n, phone_or_email: p, message: m || null }); go.disabled = false;
+      o.innerHTML = r.error ? '<div class="note err">' + esc(r.error.message) + '</div>' : '<div class="note ok">Thank you! We will contact you within one working day.</div>';
+    };
+  }
+
   // time ago on posts, like Facebook
   function ago(d) { var t = Date.parse(d.length === 10 ? d + 'T09:00:00+03:00' : d), m = Math.round((Date.now() - t) / 60000); if (isNaN(m)) return null; if (m < 60) return Math.max(1, m) + ' min'; var h = Math.round(m / 60); if (h < 24) return h + ' h'; var dd = Math.round(h / 24); if (dd < 7) return dd + (dd === 1 ? ' day' : ' days'); return null; }
   document.querySelectorAll('time[data-ago]').forEach(function (el) { var a = ago(el.dataset.ago); if (a && el.dataset.ago.length > 10) el.textContent = a; });
@@ -210,5 +279,5 @@
       };
     });
   }
-  join(); writer(); mine(); radar(); likes(); counts(); rating(); commentsUI(); board();
+  join(); writer(); mine(); radar(); likes(); counts(); rating(); commentsUI(); board(); voting(); enter(); sponsorForm();
 })();
