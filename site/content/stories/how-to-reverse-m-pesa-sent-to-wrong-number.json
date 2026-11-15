@@ -1,0 +1,39 @@
+{
+ "slug": "how-to-reverse-m-pesa-sent-to-wrong-number",
+ "cat": "howto",
+ "date": "2026-11-15",
+ "featured": false,
+ "title": "How to reverse M-PESA you sent to the wrong number",
+ "dek": "Act fast, use the official 456 channel, and never trust a stranger who calls offering to help.",
+ "body": [
+  "Sending money to the wrong number happens to almost everyone. Safaricom has an official way to request a reversal by SMS.",
+  {
+   "h": "Step by step"
+  },
+  {
+   "steps": [
+    "Find the M-PESA confirmation message for the wrong transaction.",
+    "Forward the whole message, unchanged, to 456.",
+    "Wait for a reply from Reversal confirming your request has started. Safaricom says an update comes within two hours.",
+    "Watch for further messages from Reversal on the outcome. The person who received the money is contacted before the reversal is completed."
+   ]
+  },
+  {
+   "h": "Avoid it next time"
+  },
+  "Use Hakikisha: when sending money, M-PESA shows the recipient's registered name before you confirm. Read it every time.",
+  {
+   "h": "Beware of reversal scams"
+  },
+  "A common trick is a message or call claiming money was sent to you by mistake and asking you to send it back. Real reversals only happen through Safaricom's own Reversal channel. Check your actual M-PESA balance before doing anything, and never send money to a number that calls you about a reversal."
+ ],
+ "q": "Have you ever lost money to a wrong number, and did you get it back?",
+ "sources": [
+  {
+   "name": "Safaricom: M-PESA Reversal",
+   "url": "https://www.safaricom.co.ke/media-center-landing/terms-and-conditions/m-pesa-reversal"
+  }
+ ],
+ "stat": "456",
+ "statLabel": "the official reversal line"
+}

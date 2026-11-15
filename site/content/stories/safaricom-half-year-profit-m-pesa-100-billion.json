@@ -1,0 +1,42 @@
+{
+ "slug": "safaricom-half-year-profit-m-pesa-100-billion",
+ "cat": "money",
+ "date": "2026-11-06",
+ "featured": true,
+ "title": "Safaricom profit jumps 36% as M-PESA revenue passes KSh 100 billion",
+ "dek": "Kenyans moved KSh 23.5 trillion through M-PESA in six months, and Fuliza borrowing nearly doubled.",
+ "body": [
+  "Safaricom has reported a group net profit of KSh 58.2 billion for the six months to September 2026, up 35.9% from KSh 42.8 billion a year earlier.",
+  "M-PESA remained the engine. Its revenue rose 13.6% to KSh 100.1 billion, the first time the half year figure has crossed the KSh 100 billion mark.",
+  {
+   "h": "What the numbers say about how Kenyans use money"
+  },
+  {
+   "list": [
+    "27.4 billion M-PESA transactions in six months, up 25.2%",
+    "KSh 23.56 trillion moved through the platform, up 16.6%",
+    "Fuliza overdrafts of KSh 1.16 trillion, up 84%",
+    "Average data price down to about KSh 51.50 per GB, from about KSh 57.75"
+   ]
+  },
+  "The Fuliza figure stands out. Borrowing on the overdraft service grew far faster than the money moved on M-PESA itself, a sign that many households are leaning on short term credit to get through the month.",
+  "Ethiopia, Safaricom's newer market, is still losing money, but the losses narrowed sharply. The company did not announce an interim dividend.",
+  {
+   "h": "What it means for you"
+  },
+  "Cheaper data per gigabyte is good news for heavy users, but Fuliza fees add up quickly when the overdraft becomes a habit rather than an emergency tool. Checking your Fuliza limit and repayment dates on the M-PESA menu is a simple way to stay in control."
+ ],
+ "q": "Has Fuliza become a monthly habit in your household, or do you keep it for emergencies?",
+ "sources": [
+  {
+   "name": "tech-ish",
+   "url": "https://tech-ish.com/2026/11/06/safaricom-half-year-profit-m-pesa-100-billion/"
+  },
+  {
+   "name": "Bizna Kenya",
+   "url": "https://biznakenya.com/safaricom-half-year-profit-m-pesa-revenue/"
+  }
+ ],
+ "stat": "KSh 58.2B",
+ "statLabel": "half year profit, up 36%"
+}

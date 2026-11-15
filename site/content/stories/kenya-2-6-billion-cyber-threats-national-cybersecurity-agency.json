@@ -1,0 +1,35 @@
+{
+ "slug": "kenya-2-6-billion-cyber-threats-national-cybersecurity-agency",
+ "cat": "tech",
+ "date": "2026-11-05",
+ "featured": false,
+ "title": "Kenya logs 2.6 billion cyber threats in three months as new agency takes shape",
+ "dek": "Banks, telcos and government services are the main targets. Deepfake fraud is the new worry.",
+ "body": [
+  "The Communications Authority of Kenya detected about 2.6 billion cyber threat events between July and September 2026, a 14.45% rise on the previous quarter, Director General David Mugonyi said.",
+  "ICT Cabinet Secretary William Kabogo told the Africa Cyber Defence Forum in Nairobi that the government is moving to make the new National Cybersecurity Agency fully operational. The agency will run a national cybersecurity operations centre and coordinate the work of NC4, the national KE-CIRT/CC and the Office of the Data Protection Commissioner.",
+  {
+   "h": "Who is being targeted"
+  },
+  "Officials named e-government services, telecoms, banking and finance as the sectors most under attack, and warned of deepfake fraud and impersonation. With about 88 million active mobile subscriptions in the country, the risk reaches almost every Kenyan with a phone.",
+  {
+   "h": "Simple steps that protect you"
+  },
+  {
+   "list": [
+    "Never share your M-PESA PIN, bank OTP or eCitizen password, not even with someone claiming to be from Safaricom or your bank.",
+    "Turn on two step verification on WhatsApp, Facebook and email.",
+    "Be wary of voice notes or videos asking for urgent money, even if they sound like someone you know."
+   ]
+  }
+ ],
+ "q": "Have you turned on two step verification on your WhatsApp yet?",
+ "sources": [
+  {
+   "name": "TechMoran",
+   "url": "https://techmoran.com/2026/11/05/kenya-moves-to-operationalise-cybersecurity-agency-as-threats-hit-2-6-billion/"
+  }
+ ],
+ "stat": "2.6B",
+ "statLabel": "cyber threats in 3 months"
+}

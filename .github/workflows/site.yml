@@ -1,0 +1,45 @@
+name: Tech na Pesa website
+on:
+  push: { branches: [main], paths: ['site/**', '.github/workflows/site.yml'] }
+  schedule: [{ cron: '*/30 * * * *' }]   # the review robot checks new reader stories every 30 minutes
+  workflow_dispatch:
+permissions: { contents: write, pages: write, id-token: write }
+concurrency: { group: site, cancel-in-progress: false }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: site } }
+    environment: { name: github-pages, url: '${{ steps.deploy.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - name: Review reader stories and scam reports
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node tools/moderate.js
+      - run: npx playwright install --with-deps chromium
+      - name: Draw story artwork
+        run: node tools/cards.js
+      - name: Save new stories and artwork
+        run: |
+          git config user.name "Tech na Pesa robot"; git config user.email "robot@users.noreply.github.com"
+          git add content static
+          if ! git diff --cached --quiet; then git commit -qm "Community stories and artwork [skip ci]"; git push -q; fi
+      - name: Build the site
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://timsauti.github.io/timsauti-engine' }}
+          BASE_PATH: ${{ vars.SITE_URL == '' && '/timsauti-engine' || vars.BASE_PATH }}
+          CNAME: ${{ vars.CNAME }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node src/build.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site/dist }
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,37 @@
+{
+ "slug": "ziidi-shariah-invest-from-ksh-100-on-m-pesa",
+ "cat": "money",
+ "date": "2026-10-07",
+ "featured": false,
+ "title": "Ziidi Shari'ah: you can now invest from KSh 100 straight from M-PESA",
+ "dek": "Safaricom's Sharia compliant money market fund joins Ziidi and Ziidi Trader as M-PESA grows into an investment hub.",
+ "body": [
+  "Safaricom has launched Ziidi Shari'ah, a Sharia compliant money market fund that customers can join with as little as KSh 100, with top ups from KSh 10.",
+  "The fund is managed by GulfCap Investment Bank, with KCB Bank as trustee. It is reached through the My OneApp or by dialling *334#.",
+  {
+   "h": "What you should know before you invest"
+  },
+  {
+   "list": [
+    "Returns are earned daily but are not fixed; they depend on how the fund's investments perform.",
+    "A 15% withholding tax is deducted automatically from returns.",
+    "Deposits and withdrawals carry no transaction charges, and withdrawals go back to your M-PESA."
+   ]
+  },
+  "Ziidi Shari'ah sits beside the original Ziidi Money Market Fund, launched in January 2025, and Ziidi Trader, which since February 2026 lets customers buy shares on the Nairobi Securities Exchange from their phones. By March 2026, Safaricom had 2.2 million active wealth customers holding KSh 21.1 billion.",
+  "This is information, not financial advice. Compare a fund's past returns, fees and how quickly you can withdraw before you put money in."
+ ],
+ "q": "Would you start investing with KSh 100 on your phone, or do you still prefer a SACCO or chama?",
+ "sources": [
+  {
+   "name": "Techweez",
+   "url": "https://techweez.com/2026/10/07/safaricom-launches-ziidi-shariah-money-market-fund-on-m-pesa/"
+  },
+  {
+   "name": "Digital Economy Magazine",
+   "url": "https://digitaleconomymag.com/2026/11/safaricom-positions-m-pesa-with-new-ai-and-wealth-features/"
+  }
+ ],
+ "stat": "KSh 100",
+ "statLabel": "is all you need to start"
+}
