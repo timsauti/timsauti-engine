@@ -20,11 +20,14 @@
     if (s) {
       var p = await profile(s.user.id);
       if (p && p.display_name) { location.href = next; return; }
-      el.innerHTML = '<h2 style="font-family:var(--head);margin:0">Welcome! One last step</h2><p style="color:var(--muted)">Choose the name readers will see on your stories. You can use your real name or a pen name.</p><label>Display name</label><input id="dn" maxlength="40" placeholder="e.g. Mwende from Machakos"><label>County</label><select id="co"><option value="">Choose (optional)</option>' + COUNTIES.map(function (c) { return '<option>' + c + '</option>'; }).join('') + '</select><label style="display:flex;gap:10px;align-items:flex-start;font-weight:500"><input type="checkbox" id="ok" style="width:auto;margin-top:5px"> I agree to the <a href="' + B + '/rules/" style="text-decoration:underline">community rules</a> and <a href="' + B + '/privacy/" style="text-decoration:underline">privacy policy</a>.</label><button class="btn" id="save" style="margin-top:16px">Save and continue</button><div id="st"></div>';
+      el.innerHTML = '<h2 style="font-family:var(--head);margin:0">Welcome! One last step</h2><p style="color:var(--muted)">Choose the name readers will see on your stories. You can use your real name or a pen name.</p><label>Display name</label><input id="dn" maxlength="40" placeholder="e.g. Mwende from Machakos"><label>Profile photo (optional)</label><input id="av" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">A clear photo of you, or a picture you like. It appears beside your stories. Up to 2 MB.</div><label>County</label><select id="co"><option value="">Choose (optional)</option>' + COUNTIES.map(function (c) { return '<option>' + c + '</option>'; }).join('') + '</select><label style="display:flex;gap:10px;align-items:flex-start;font-weight:500"><input type="checkbox" id="ok" style="width:auto;margin-top:5px"> I agree to the <a href="' + B + '/rules/" style="text-decoration:underline">community rules</a> and <a href="' + B + '/privacy/" style="text-decoration:underline">privacy policy</a>.</label><button class="btn" id="save" style="margin-top:16px">Save and continue</button><div id="st"></div>';
       $('save').onclick = async function () {
         var dn = $('dn').value.trim(); if (dn.length < 3) { $('st').innerHTML = '<div class="note err">Please enter a name of at least 3 letters.</div>'; return; }
         if (!$('ok').checked) { $('st').innerHTML = '<div class="note err">Please agree to the rules to continue.</div>'; return; }
-        var r = await sb.from('profiles').upsert({ id: s.user.id, display_name: dn, county: $('co').value || null });
+        var av = $('av').files[0], ap = null;
+        if (av) { if (av.size > 2 * 1024 * 1024) { $('st').innerHTML = '<div class="note err">That photo is too large. Please use one under 2 MB.</div>'; return; } ap = s.user.id + '/' + Date.now() + '.' + (av.type.split('/')[1] || 'jpg'); var up = await sb.storage.from('avatars').upload(ap, av, { contentType: av.type }); if (up.error) { $('st').innerHTML = '<div class="note err">Photo upload failed: ' + esc(up.error.message) + '</div>'; return; } }
+        var row = { id: s.user.id, display_name: dn, county: $('co').value || null }; if (ap) row.avatar_path = ap;
+        var r = await sb.from('profiles').upsert(row);
         if (r.error) { $('st').innerHTML = '<div class="note err">' + esc(r.error.message) + '</div>'; return; } location.href = next;
       };
       return;
@@ -72,7 +75,7 @@
     var s = (await sb.auth.getSession()).data.session; if (!s) { el.innerHTML = '<div class="panel" id="lg"></div>'; return needLogin($('lg'), 'see your stories'); }
     var r = await sb.from('stories').select('id,title,status,reason,slug,created_at').eq('author', s.user.id).order('created_at', { ascending: false });
     var label = { pending: ['In review', 'info'], approved: ['Live', 'ok'], rejected: ['Not published', 'err'] };
-    el.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px"><a class="btn" href="' + B + '/write/">Write a new story</a><button class="btn ghost" style="color:var(--ink)" id="out">Sign out</button></div>'
+    el.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px"><a class="btn" href="' + B + '/write/">Write a new story</a><label class="btn ghost" style="color:var(--ink);cursor:pointer">Change profile photo<input id="nav" type="file" accept="image/jpeg,image/png,image/webp" hidden></label><button class="btn ghost" style="color:var(--ink)" id="out">Sign out</button></div><div id="pst"></div>'
       + ((r.data || []).length ? (r.data || []).map(function (x) {
         var l = label[x.status] || ['', 'info'], url = x.slug ? location.origin + B + '/community/' + x.slug + '/' : '';
         return '<div class="panel" style="margin-bottom:14px"><span class="note ' + l[1] + '" style="display:inline-block;padding:4px 12px;margin:0 0 8px">' + l[0] + '</span><h3 style="font-family:var(--head);margin:0 0 6px">' + esc(x.title) + '</h3>'
@@ -81,6 +84,7 @@
           + '<button class="btn ghost" style="color:var(--red);padding:7px 14px;font-size:14px" data-del="' + x.id + '">' + (x.status === 'approved' ? 'Ask to remove' : 'Delete') + '</button></div>';
       }).join('') : '<div class="empty">You have not shared a story yet.</div>');
     $('out').onclick = async function () { await sb.auth.signOut(); location.href = B + '/'; };
+    $('nav').onchange = async function () { var f = this.files[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) { $('pst').innerHTML = '<div class="note err">Please use a photo under 2 MB.</div>'; return; } var ap = s.user.id + '/' + Date.now() + '.' + (f.type.split('/')[1] || 'jpg'); var up = await sb.storage.from('avatars').upload(ap, f, { contentType: f.type }); if (up.error) { $('pst').innerHTML = '<div class="note err">' + esc(up.error.message) + '</div>'; return; } await sb.from('profiles').update({ avatar_path: ap }).eq('id', s.user.id); $('pst').innerHTML = '<div class="note ok">Photo saved. It will show beside your next published story after a quick check.</div>'; };
     el.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = async function () { if (!confirm('Remove this story? This cannot be undone.')) return; var d = await sb.from('stories').update({ status: 'removal_requested' }).eq('id', b.dataset.del); if (d.error) alert(d.error.message); else mine(); }; });
   }
 
@@ -100,5 +104,26 @@
     st.innerHTML = r.error ? '<div class="note err">' + esc(r.error.message) + '</div>' : '<div class="note ok">Thank you. Our editors will check it, hide any phone numbers and names, and add it to Scam Radar.</div>';
   };
 
-  join(); writer(); mine(); radar();
+  // time ago on posts, like Facebook
+  function ago(d) { var t = Date.parse(d.length === 10 ? d + 'T09:00:00+03:00' : d), m = Math.round((Date.now() - t) / 60000); if (isNaN(m)) return null; if (m < 60) return Math.max(1, m) + ' min'; var h = Math.round(m / 60); if (h < 24) return h + ' h'; var dd = Math.round(h / 24); if (dd < 7) return dd + (dd === 1 ? ' day' : ' days'); return null; }
+  document.querySelectorAll('time[data-ago]').forEach(function (el) { var a = ago(el.dataset.ago); if (a && el.dataset.ago.length > 10) el.textContent = a; });
+  // likes
+  async function likes() {
+    var btns = document.querySelectorAll('[data-like]'); if (!btns.length) return;
+    var slugs = Array.prototype.map.call(btns, function (b) { return b.dataset.like; });
+    var show = function (slug, n) { var el = document.querySelector('[data-count="' + slug + '"]'); if (el) el.textContent = n ? n + (n === 1 ? ' person likes this' : ' people like this') : ''; };
+    var counts = {}; if (live) { var r = await sb.from('like_counts').select('slug,n').in('slug', slugs); (r.data || []).forEach(function (x) { counts[x.slug] = x.n; }); }
+    var s = live ? (await sb.auth.getSession()).data.session : null, mineL = {};
+    if (s) { var m = await sb.from('likes').select('slug').eq('user_id', s.user.id).in('slug', slugs); (m.data || []).forEach(function (x) { mineL[x.slug] = 1; }); }
+    btns.forEach(function (b) {
+      var slug = b.dataset.like; show(slug, counts[slug] || 0); if (mineL[slug]) b.classList.add('on');
+      b.onclick = async function () {
+        if (!live) return; if (!s) { location.href = B + '/join/?next=' + encodeURIComponent(location.pathname); return; }
+        var on = b.classList.toggle('on'); counts[slug] = (counts[slug] || 0) + (on ? 1 : -1); show(slug, counts[slug]);
+        var q = on ? await sb.from('likes').insert({ slug: slug, user_id: s.user.id }) : await sb.from('likes').delete().eq('slug', slug).eq('user_id', s.user.id);
+        if (q.error) { b.classList.toggle('on'); counts[slug] += on ? -1 : 1; show(slug, counts[slug]); }
+      };
+    });
+  }
+  join(); writer(); mine(); radar(); likes();
 })();

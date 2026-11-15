@@ -154,6 +154,32 @@ textarea{min-height:160px;resize:vertical}
 .wall{display:flex;flex-wrap:wrap;gap:12px}
 .wall a{display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 18px;min-width:130px;text-align:center}
 .wall .avatar{width:52px;height:52px;font-size:22px}.wall small{color:var(--muted)}
+/* community feed, Facebook style */
+.feedsec{background:#eef2f8;padding:40px 0}
+.feedgrid{display:grid;grid-template-columns:minmax(0,640px) 1fr;gap:26px;align-items:start;justify-content:center}
+.feed{display:flex;flex-direction:column;gap:16px}
+.post{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(7,20,42,.12);overflow:hidden;display:block}
+.post header{display:flex;gap:12px;align-items:center;padding:14px 16px 6px}
+.pp{border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 0 0 2px var(--green2)}
+.pn{font-weight:700;font-size:16px;color:var(--ink)}.pn:hover{text-decoration:underline}
+.pm{color:var(--muted);font-size:13px}
+.pt{display:block;font-family:var(--head);font-weight:700;font-size:20px;line-height:1.25;padding:4px 16px 2px}
+.px{padding:0 16px;font-size:16px;line-height:1.55}.px p{margin:8px 0}
+.px.clip{max-height:9.6em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 60%,transparent)}
+.more{background:none;border:0;padding:2px 16px 6px;font:600 15px var(--body);color:var(--muted);cursor:pointer}.more:hover{text-decoration:underline}
+.pimg{width:100%;max-height:560px;object-fit:cover;margin-top:10px}
+.pc{padding:8px 16px 0;color:var(--muted);font-size:14px;min-height:8px}
+.post footer{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);margin:8px 12px 0;padding:4px 0 6px;background:none;color:inherit;font-size:14px}
+.act{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 4px;border-radius:8px;background:none;border:0;font:600 14px var(--body);color:#56657a;cursor:pointer}
+.act:hover{background:#f0f3f8}.act svg{width:19px;height:19px}.act.wa{color:#1da851}.act.on{color:#0b6fd0}
+.composer{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.composer .pp{background:linear-gradient(135deg,var(--green2),var(--blue));color:#04121f;font-weight:700;font-size:22px;box-shadow:none}
+.fake-input{flex:1;background:#f0f3f8;border-radius:999px;padding:12px 18px;color:var(--muted);font-size:15px}
+.empty-post{text-align:center;padding:30px 24px}.empty-post .pp{margin:0 auto 10px;box-shadow:none}.empty-post h3{font-family:var(--head);font-size:24px;margin:0 0 6px}.empty-post p{color:var(--muted);margin:0 0 16px}
+.fside{display:flex;flex-direction:column;gap:16px;position:sticky;top:120px}
+.fside .panel{padding:20px;border-radius:16px}.fside h3{font-family:var(--head);margin:0 0 8px;font-size:20px}.fside p{color:var(--muted);margin:0 0 14px;font-size:15px}
+.tw{display:flex;gap:12px;align-items:center;padding:8px 0}.tw b{display:block;font-size:15px}.tw small{color:var(--muted);font-size:13px}
+.mini-check{background:linear-gradient(135deg,#0b1c37,#081428)!important;color:#fff;border:0!important}.mini-check p{color:#c9d6ea!important}
 /* footer */
 footer{background:var(--navy);color:#9fb3cf;margin-top:40px;padding:40px 0 30px;font-size:15px}
 .fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:26px}
@@ -164,7 +190,8 @@ footer a{display:block;margin:6px 0}footer a:hover{color:#fff}
 @media (max-width:900px){
   .hero-grid,.band,.comm,.two,.with-readers{grid-template-columns:1fr}
   .readers{position:static}
-  .with-readers .readers{order:-1}
+  .feedgrid{grid-template-columns:1fr}
+  .fside{position:static}
   .grid,.radar{grid-template-columns:1fr 1fr}
   .fgrid{grid-template-columns:1fr 1fr}
 }
@@ -182,4 +209,8 @@ footer a{display:block;margin:6px 0}footer a:hover{color:#fff}
   .band{padding:24px}.band h2,.comm h2{font-size:28px}
   .lead .txt{padding:18px}
   section{padding:34px 0}
+  .feedsec .wrap{padding:0 8px}
+  .post{border-radius:12px}
+  .act{font-size:13px;gap:5px}
+  .fside .mini-check,.fside .panel:first-child{display:none}
 }

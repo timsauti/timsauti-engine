@@ -72,3 +72,29 @@ drop policy if exists "images read" on storage.objects;
 create policy "images read" on storage.objects for select using (bucket_id = 'story-images');
 drop policy if exists "images own upload" on storage.objects;
 create policy "images own upload" on storage.objects for insert to authenticated with check (bucket_id = 'story-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- profile photos (checked by the review robot before they appear with a published story)
+alter table public.profiles add column if not exists avatar_path text;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 2097152, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do nothing;
+drop policy if exists "avatars read" on storage.objects;
+create policy "avatars read" on storage.objects for select using (bucket_id = 'avatars');
+drop policy if exists "avatars own upload" on storage.objects;
+create policy "avatars own upload" on storage.objects for insert to authenticated with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- likes on published stories: one like per reader per story
+create table if not exists public.likes (
+  slug text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (slug, user_id)
+);
+alter table public.likes enable row level security;
+drop policy if exists "likes read" on public.likes;
+create policy "likes read" on public.likes for select using (true);
+drop policy if exists "likes own add" on public.likes;
+create policy "likes own add" on public.likes for insert with check (auth.uid() = user_id and exists (select 1 from public.stories s where s.slug = likes.slug and s.status = 'approved'));
+drop policy if exists "likes own remove" on public.likes;
+create policy "likes own remove" on public.likes for delete using (auth.uid() = user_id);
+create or replace view public.like_counts with (security_invoker = true) as select slug, count(*)::int as n from public.likes group by slug;

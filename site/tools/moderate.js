@@ -48,6 +48,15 @@ async function stories() {
     const slug = slugify(v.title || s.title) + '-' + s.id.slice(0, 6);
     const rec = { slug, title: (v.title || s.title).trim(), dek: v.dek || '', body: v.paragraphs.map(scrub), q: v.question || '', author: prof.display_name || 'A reader', county: prof.county || s.county || '', date: new Date().toISOString().slice(0, 10), cat: s.category, id: s.id, author_key: require('crypto').createHash('sha1').update(s.author).digest('hex').slice(0, 6) };
     if (useImage) { const ext = /png/.test(image.mime) ? 'png' : /webp/.test(image.mime) ? 'webp' : 'jpg'; fs.mkdirSync(path.join(ROOT, 'static', 'img', 'community'), { recursive: true }); fs.writeFileSync(path.join(ROOT, 'static', 'img', 'community', slug + '.' + ext), image.buf); rec.photo = `img/community/${slug}.${ext}`; }
+    // profile photo: shown beside the writer's stories once it passes a quick check
+    const prof2 = (await db(`profiles?id=eq.${s.author}&select=avatar_path`))[0] || {};
+    if (prof2.avatar_path) {
+      try {
+        const ar = await fetch(`${SU}/storage/v1/object/public/avatars/${prof2.avatar_path}`); const abuf = Buffer.from(await ar.arrayBuffer()); const amime = ar.headers.get('content-type') || 'image/jpeg';
+        const av = await gemini('This is a profile photo a reader chose for a public Kenyan community website. Is it suitable? Fail it if it shows nudity, violence, a weapon, a hateful symbol, readable phone or ID numbers, or a child alone as the main subject. A normal adult portrait, a group of adults, a logo or a picture of an object or place is fine. Return JSON {"ok":true|false}', { mime: amime, b64: abuf.toString('base64') });
+        if (av && av.ok === true) { const ext = /png/.test(amime) ? 'png' : /webp/.test(amime) ? 'webp' : 'jpg'; fs.mkdirSync(path.join(ROOT, 'static', 'img', 'avatars'), { recursive: true }); for (const e of ['png', 'jpg', 'webp']) try { fs.unlinkSync(path.join(ROOT, 'static', 'img', 'avatars', rec.author_key + '.' + e)); } catch (x) {} fs.writeFileSync(path.join(ROOT, 'static', 'img', 'avatars', rec.author_key + '.' + ext), abuf); rec.avatar = `img/avatars/${rec.author_key}.${ext}`; }
+      } catch (e) {}
+    }
     fs.mkdirSync(path.join(ROOT, 'content', 'community'), { recursive: true });
     fs.writeFileSync(path.join(ROOT, 'content', 'community', slug + '.json'), JSON.stringify(rec, null, 1));
     await patch('stories', s.id, { status: 'approved', slug, reviewed_at: new Date().toISOString() });
