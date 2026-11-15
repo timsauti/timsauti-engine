@@ -322,6 +322,20 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       else { p.qc = qc.problems; out[id] = 'still held: ' + (qc.problems || []).join('; ').slice(0, 300); }
     }
     fs.writeFileSync(file, JSON.stringify(posts, null, 1)); fs.writeFileSync(path.join(ROOT, 'data', 'rescue.json'), JSON.stringify({ at: new Date().toISOString(), out }, null, 1)); console.log(JSON.stringify(out));
+  } else if (ACTION === 'mypages') {
+    // read only: every Page the owner's login manages, with followers and the date of its latest post. No keys are written out.
+    const ut = process.env.FB_USER_TOKEN; const out = [];
+    let url = `https://graph.facebook.com/${GV}/me/accounts?limit=100&fields=id,name,category,fan_count,followers_count,access_token,tasks`;
+    for (let i = 0; i < 5 && url; i++) {
+      const j = await (await fetch(url, { headers: { Authorization: 'Bearer ' + ut }, signal: AbortSignal.timeout(60000) })).json().catch(() => ({}));
+      if (j.error) { out.push({ error: mask(JSON.stringify(j.error)).slice(0, 200) }); break; }
+      for (const x of j.data || []) {
+        let last = null; try { const pj = await (await fetch(`https://graph.facebook.com/${GV}/${x.id}/posts?limit=1&fields=created_time`, { headers: { Authorization: 'Bearer ' + x.access_token }, signal: AbortSignal.timeout(60000) })).json(); last = pj.data && pj.data[0] ? pj.data[0].created_time : null; } catch (e) {}
+        out.push({ name: x.name, id: x.id, category: x.category, followers: x.followers_count, likes: x.fan_count, lastPost: last, canPost: (x.tasks || []).includes('CREATE_CONTENT') });
+      }
+      url = j.paging && j.paging.next ? j.paging.next.replace(/access_token=[^&]+&?/, '') : null;
+    }
+    fs.mkdirSync(path.join(ROOT, 'data', 'analysis'), { recursive: true }); fs.writeFileSync(path.join(ROOT, 'data', 'analysis', 'mypages.json'), JSON.stringify({ at: new Date().toISOString(), pages: out }, null, 1)); console.log(out.length + ' pages');
   } else if (ACTION === 'leaderphoto') {
     // TARGET = one or more full names separated by commas: finds each leader's photo from recent news and keeps it in the photo bank
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
