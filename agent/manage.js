@@ -8,11 +8,13 @@ const ROOT = path.join(__dirname, '..'), GV = 'v26.0';
 const PAGES = { timsauti: { pageId: '394580017413619', token: process.env.TIMSAUTI_PAGE_TOKEN, tags: ['Timsauti', 'TimsautiDigitalAgency'] },
   makasa: { pageId: '351919135654247', token: process.env.MAKASA_PAGE_TOKEN, tags: ['Makasa', 'AuthorMakasa', 'MakasatheAuthor', 'TimSauti'] },
   sauti: { pageId: '1859768287449730', token: process.env.SAUTI_PAGE_TOKEN, tags: ['sautimedia'] },
-  cornerstone: { pageId: '104576991675007', token: '', tags: ['CornerstoneRehab', 'Machakos'] } };   // client Page (owner, 9 Nov); its key comes from the owner's Facebook login
+  cornerstone: { pageId: '104576991675007', token: '', tags: ['CornerstoneRehab', 'Machakos'] },
+  techpulse: { pageId: '570910356269659', token: '', tags: ['KenyaTechPulse'] } };   // owner, 15 Nov: his company Page Rentnyumba.com becomes Kenya Tech Pulse   // client Page (owner, 9 Nov); its key comes from the owner's Facebook login
 const mask = (s) => String(s || '').replace(/access_token=[^&"\s]+/g, 'access_token=***').replace(/EAA[A-Za-z0-9]{20,}/g, 'EAA***');
 const { ACTION, TARGET, PAGE } = process.env;
 const page = PAGES[PAGE]; if (!page) { console.log('Unknown page'); process.exit(1); }
 let auth;
+try { fs.mkdirSync(path.join(ROOT, 'data', PAGE), { recursive: true }); } catch (e) {}
 const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.jsonl'), JSON.stringify(Object.assign({ ts: new Date().toISOString() }, o)) + '\n');
 (async () => {
   if (!page.token && process.env.FB_USER_TOKEN) {   // get the Page key from the owner's long lived user key
@@ -336,6 +338,24 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       url = j.paging && j.paging.next ? j.paging.next.replace(/access_token=[^&]+&?/, '') : null;
     }
     fs.mkdirSync(path.join(ROOT, 'data', 'analysis'), { recursive: true }); fs.writeFileSync(path.join(ROOT, 'data', 'analysis', 'mypages.json'), JSON.stringify({ at: new Date().toISOString(), pages: out }, null, 1)); console.log(out.length + ' pages');
+  } else if (ACTION === 'pagekit') {
+    // owner, 15 Nov: dress a Page in its new brand. First saves every current setting (backup), then sets the about text, profile
+    // picture, cover and, if Facebook allows it here, the name. TARGET = folder under agent/assets holding kit.json, logo.png, cover.png.
+    const dir = path.join(ROOT, 'agent', 'assets', String(TARGET).replace(/[^a-z0-9_]/gi, '')); const kit = JSON.parse(fs.readFileSync(path.join(dir, 'kit.json'), 'utf8'));
+    const G = async (u, o) => { const r = await fetch(`https://graph.facebook.com/${GV}/${u}`, Object.assign({ headers: auth, signal: AbortSignal.timeout(90000) }, o || {})); return { ok: r.ok, j: await r.json().catch(() => ({})) }; };
+    const before = await G(`${page.pageId}?fields=id,name,username,about,description,category,category_list,website,phone,emails,location,picture.width(800){url},cover{source,id}`);
+    if (!before.ok || before.j.id !== page.pageId) { console.log('could not read the Page: ' + mask(JSON.stringify(before.j)).slice(0, 300)); process.exit(1); }
+    fs.mkdirSync(path.join(ROOT, 'data', PAGE, 'backup'), { recursive: true });
+    fs.writeFileSync(path.join(ROOT, 'data', PAGE, 'backup', 'page_settings_before_' + Date.now() + '.json'), JSON.stringify(before.j, null, 1));
+    const res = {};
+    const up = async (file) => { const fd = new FormData(); fd.append('source', new Blob([fs.readFileSync(path.join(dir, file))], { type: 'image/png' }), file); fd.append('published', 'false'); const r = await G(`${page.pageId}/photos`, { method: 'POST', body: fd }); return r.j.id || null; };
+    for (const f of ['about', 'description']) if (kit[f]) { const r = await G(page.pageId, { method: 'POST', body: new URLSearchParams({ [f]: kit[f] }) }); res[f] = r.ok ? 'set' : mask(JSON.stringify(r.j.error || r.j)).slice(0, 200); }
+    if (fs.existsSync(path.join(dir, 'logo.png'))) { const id = await up('logo.png'); const r = id ? await G(`${page.pageId}/picture`, { method: 'POST', body: new URLSearchParams({ photo: id }) }) : { ok: false, j: 'upload failed' }; res.picture = r.ok ? 'set' : mask(JSON.stringify(r.j.error || r.j)).slice(0, 200); }
+    if (fs.existsSync(path.join(dir, 'cover.png'))) { const id = await up('cover.png'); const r = id ? await G(page.pageId, { method: 'POST', body: new URLSearchParams({ cover: id, no_feed_story: 'true' }) }) : { ok: false, j: 'upload failed' }; res.cover = r.ok ? 'set' : mask(JSON.stringify(r.j.error || r.j)).slice(0, 200); }
+    if (kit.name && kit.name !== before.j.name) { const r = await G(page.pageId, { method: 'POST', body: new URLSearchParams({ name: kit.name }) }); res.name = r.ok ? 'sent' : mask(JSON.stringify(r.j.error || r.j)).slice(0, 200); }
+    const after = await G(`${page.pageId}?fields=name,about,description,category,picture.width(200){url},cover{source}`);
+    audit({ event: 'pagekit', results: res, after: { name: after.j.name, about: after.j.about, category: after.j.category } });
+    fs.writeFileSync(path.join(ROOT, 'data', PAGE, 'pagekit_result.json'), JSON.stringify({ at: new Date().toISOString(), before: { name: before.j.name, category: before.j.category, website: before.j.website, about: before.j.about }, results: res, after: after.j }, null, 1)); console.log(JSON.stringify(res));
   } else if (ACTION === 'leaderphoto') {
     // TARGET = one or more full names separated by commas: finds each leader's photo from recent news and keeps it in the photo bank
     process.env.SELFTEST = '1'; const S = require('./sauti'); const gem = require('./run').gemini;
