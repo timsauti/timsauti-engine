@@ -54,6 +54,7 @@ async function stories() {
       try {
         const ar = await fetch(`${SU}/storage/v1/object/public/avatars/${prof2.avatar_path}`); const abuf = Buffer.from(await ar.arrayBuffer()); const amime = ar.headers.get('content-type') || 'image/jpeg';
         const av = await gemini('This is a profile photo a reader chose for a public Kenyan community website. Is it suitable? Fail it if it shows nudity, violence, a weapon, a hateful symbol, readable phone or ID numbers, or a child alone as the main subject. A normal adult portrait, a group of adults, a logo or a picture of an object or place is fine. Return JSON {"ok":true|false}', { mime: amime, b64: abuf.toString('base64') });
+        await db(`profiles?id=eq.${s.author}`, { method: 'PATCH', body: JSON.stringify({ avatar_ok: !!(av && av.ok === true) }), headers: Object.assign({ Prefer: 'return=minimal' }, H) });
         if (av && av.ok === true) { const ext = /png/.test(amime) ? 'png' : /webp/.test(amime) ? 'webp' : 'jpg'; fs.mkdirSync(path.join(ROOT, 'static', 'img', 'avatars'), { recursive: true }); for (const e of ['png', 'jpg', 'webp']) try { fs.unlinkSync(path.join(ROOT, 'static', 'img', 'avatars', rec.author_key + '.' + e)); } catch (x) {} fs.writeFileSync(path.join(ROOT, 'static', 'img', 'avatars', rec.author_key + '.' + ext), abuf); rec.avatar = `img/avatars/${rec.author_key}.${ext}`; }
       } catch (e) {}
     }
@@ -78,4 +79,20 @@ async function reports() {
   }
 }
 
-(async () => { await stories(); await reports(); console.log('review done'); })().catch((e) => { console.log('review error: ' + String(e.message).slice(0, 200)); process.exit(1); });
+async function avatars() {
+  for (const p of await db('profiles?avatar_path=not.is.null&avatar_ok=is.null&select=id,avatar_path&limit=40')) {
+    let ok = false;
+    try { const r = await fetch(`${SU}/storage/v1/object/public/avatars/${p.avatar_path}`); const buf = Buffer.from(await r.arrayBuffer()); const v = await gemini('This is a profile photo a reader chose for a public Kenyan community website. Is it suitable? Fail it if it shows nudity, violence, a weapon, a hateful symbol, readable phone or ID numbers, or a child alone as the main subject. A normal adult portrait, a group of adults, a logo or a picture of an object or place is fine. Return JSON {"ok":true|false}', { mime: r.headers.get('content-type') || 'image/jpeg', b64: buf.toString('base64') }); if (!v) continue; ok = v.ok === true; } catch (e) { continue; }
+    await db(`profiles?id=eq.${p.id}`, { method: 'PATCH', body: JSON.stringify({ avatar_ok: ok }), headers: Object.assign({ Prefer: 'return=minimal' }, H) });
+  }
+}
+async function comments() {
+  const rows = await db('comments?checked=is.false&status=eq.visible&select=id,body&order=created_at.asc&limit=80'); if (!rows.length) return;
+  const v = await gemini(`You moderate comments on a Kenyan website about tech, money and scams. Hide a comment if it insults or threatens anyone, uses hate or tribal language, is sexual, accuses a named private person of a crime, advertises something, asks people to send money or contact someone privately, or is spam. Normal disagreement, questions and short reactions are fine.\nComments:\n${rows.map((r) => r.id + ': ' + r.body.replace(/\s+/g, ' ')).join('\n')}\nReturn JSON {"hide":["id", ...]}`);
+  if (!v) return;
+  const hide = new Set(Array.isArray(v.hide) ? v.hide : []);
+  for (const r of rows) await patch('comments', r.id, hide.has(r.id) ? { status: 'hidden', checked: true } : { checked: true });
+  console.log('comments checked', rows.length, 'hidden', hide.size);
+}
+
+(async () => { await stories(); await reports(); await avatars(); await comments(); console.log('review done'); })().catch((e) => { console.log('review error: ' + String(e.message).slice(0, 200)); process.exit(1); });

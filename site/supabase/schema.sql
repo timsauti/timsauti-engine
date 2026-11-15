@@ -98,3 +98,67 @@ create policy "likes own add" on public.likes for insert with check (auth.uid() 
 drop policy if exists "likes own remove" on public.likes;
 create policy "likes own remove" on public.likes for delete using (auth.uid() = user_id);
 create or replace view public.like_counts with (security_invoker = true) as select slug, count(*)::int as n from public.likes group by slug;
+
+-- ===== Round 2: comments, star ratings, safe profile photos =====
+-- profile photos only show once the review robot marks them safe; readers cannot mark their own
+alter table public.profiles add column if not exists avatar_ok boolean;
+create or replace function public.guard_avatar() returns trigger language plpgsql as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    if tg_op = 'INSERT' then new.avatar_ok := null;
+    else new.avatar_ok := case when new.avatar_path is distinct from old.avatar_path then null else old.avatar_ok end;
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_avatar on public.profiles;
+create trigger guard_avatar before insert or update on public.profiles for each row execute function public.guard_avatar();
+
+-- likes may be on newsroom or reader stories; the slug must look like one of ours
+drop policy if exists "likes own add" on public.likes;
+create policy "likes own add" on public.likes for insert with check (auth.uid() = user_id and slug ~ '^[a-z0-9-]{3,90}$');
+
+-- star ratings: one rating per reader per story, 1 to 5; writers cannot rate their own story; accounts must be 3 days old
+create table if not exists public.ratings (
+  slug text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  stars smallint not null check (stars between 1 and 5),
+  created_at timestamptz not null default now(),
+  primary key (slug, user_id)
+);
+alter table public.ratings enable row level security;
+drop policy if exists "ratings read" on public.ratings;
+create policy "ratings read" on public.ratings for select using (true);
+drop policy if exists "ratings own add" on public.ratings;
+create policy "ratings own add" on public.ratings for insert with check (
+  auth.uid() = user_id and slug ~ '^[a-z0-9-]{3,90}$'
+  and not exists (select 1 from public.stories s where s.slug = ratings.slug and s.author = auth.uid())
+  and exists (select 1 from public.profiles p where p.id = auth.uid() and p.created_at < now() - interval '3 days'));
+drop policy if exists "ratings own change" on public.ratings;
+create policy "ratings own change" on public.ratings for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create or replace view public.rating_stats with (security_invoker = true) as
+  select slug, round(avg(stars)::numeric, 1) as avg, count(*)::int as n from public.ratings group by slug;
+
+-- comments: go live at once but cannot hold links or phone numbers; the robot hides abuse; writers can delete their own
+create table if not exists public.comments (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null check (slug ~ '^[a-z0-9-]{3,90}$'),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  parent uuid references public.comments(id) on delete cascade,
+  body text not null check (char_length(body) between 2 and 1000 and body !~* '(https?://|www\.|\.com|\.co\.ke|bit\.ly)' and body !~ '[0-9][0-9 ]{6,}[0-9]'),
+  status text not null default 'visible' check (status in ('visible','hidden','deleted')),
+  checked boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.comments enable row level security;
+drop policy if exists "comments read" on public.comments;
+create policy "comments read" on public.comments for select using (status = 'visible');
+drop policy if exists "comments own add" on public.comments;
+create policy "comments own add" on public.comments for insert with check (
+  auth.uid() = user_id and status = 'visible' and checked = false
+  and exists (select 1 from public.profiles p where p.id = auth.uid())
+  and (select count(*) from public.comments c where c.user_id = auth.uid() and c.created_at > now() - interval '1 hour') < 20);
+drop policy if exists "comments own delete" on public.comments;
+create policy "comments own delete" on public.comments for update using (auth.uid() = user_id) with check (auth.uid() = user_id and status = 'deleted');
+create or replace view public.comment_counts with (security_invoker = true) as
+  select slug, count(*)::int as n from public.comments where status = 'visible' group by slug;

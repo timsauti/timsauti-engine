@@ -22,9 +22,25 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node tools/moderate.js
+      - name: Refresh exchange rates
+        run: node tools/rates.js
+      - name: Story of the Month (first days of each month)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+        run: node tools/month.js
       - run: npx playwright install --with-deps chromium
       - name: Draw story artwork
         run: node tools/cards.js
+      - name: Feature the best reader story on Facebook (evenings, once a day)
+        env:
+          FB_USER_TOKEN: ${{ secrets.FB_USER_TOKEN }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://timsauti.github.io/timsauti-engine' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/feature.js
       - name: Save new stories and artwork
         run: |
           git config user.name "Tech na Pesa robot"; git config user.email "robot@users.noreply.github.com"
