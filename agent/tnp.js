@@ -11,7 +11,7 @@ const { Resvg } = require('@resvg/resvg-js');
 const ROOT = path.join(__dirname, '..');
 const REF = process.env.SUPABASE_PROJECT_REF || 'kbaetbnzurntvhcqzihc';
 const SB = `https://${REF}.supabase.co`;
-const SITE = (process.env.TNP_SITE_URL || 'https://technapesa.pages.dev').replace(/\/$/, '');
+const SITE = (process.env.TNP_SITE_URL || 'https://technapesa.co.ke').replace(/\/$/, '');
 const SELFTEST = process.env.SELFTEST === '1';
 const PAUSED = fs.existsSync(path.join(ROOT, 'PAUSE'));
 const GV = 'v26.0';

@@ -25,7 +25,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
-          TNP_SITE_URL: ${{ vars.STAGING_URL || 'https://technapesa.pages.dev' }}
+          TNP_SITE_URL: ${{ vars.TNP_SITE_URL || 'https://technapesa.co.ke' }}
         run: node agent/tnp.js
       - name: Keep the sample run in the private vault
         if: github.event.inputs.selftest == 'yes'

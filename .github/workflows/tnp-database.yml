@@ -42,12 +42,14 @@ jobs:
             && git add -A technapesa && git commit -q -m "TECH na PESA backup before migration" \
             && for i in 1 2 3 4; do git pull -q --rebase -X theirs && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1 )
           npx -y supabase@2.122.0 db push -p "$SUPABASE_DB_PASSWORD" --include-all
-      - name: Point sign in links at the staging site
+      - name: Point sign in links at the site (technapesa.co.ke, with technapesa.pages.dev kept as a fallback)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SITE: ${{ vars.STAGING_URL || 'https://technapesa.pages.dev' }}
+          SITE: ${{ vars.TNP_SITE_URL || 'https://technapesa.co.ke' }}
+          OLD: https://technapesa.pages.dev
         run: |
+          ALLOW="$SITE/auth/callback/,$SITE/reset/,https://www.technapesa.co.ke/auth/callback/,https://www.technapesa.co.ke/reset/,$OLD/auth/callback/,$OLD/reset/,http://localhost:4321/auth/callback/,http://localhost:4321/reset/"
           curl -fsS -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "{\"site_url\":\"$SITE\",\"uri_allow_list\":\"$SITE/auth/callback/,$SITE/reset/,http://localhost:4321/auth/callback/,http://localhost:4321/reset/\",\"mailer_otp_exp\":3600,\"password_min_length\":10,\"security_update_password_require_reauthentication\":true}" >/dev/null
-          echo "auth settings updated"
+            -d "{\"site_url\":\"$SITE\",\"uri_allow_list\":\"$ALLOW\",\"mailer_otp_exp\":3600,\"password_min_length\":10,\"security_update_password_require_reauthentication\":true}" >/dev/null
+          echo "auth settings updated for $SITE"
