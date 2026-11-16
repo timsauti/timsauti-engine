@@ -12,23 +12,26 @@ Last updated: 2026-11-16
 - Working without a database: 6 newsroom stories, Scam Checker, Money Tools (M-PESA calculator, EPRA fuel prices, daily exchange rates), sitemap, RSS.
 - Built but not live (no database yet): accounts, community feed, comments, likes, ratings, challenges, judging.
 
-## Recommended architecture (pending approval)
-- Next.js + TypeScript app on Cloudflare Workers (Paid, USD 5/month).
-- Supabase Pro (PostgreSQL + PostGIS, Auth, Storage, daily backups), separate staging and production.
-- M-PESA Daraja STK Push through server routes; sandbox until Safaricom approves production.
+## Architecture (revised 2026-11-16 for a zero monthly budget)
+- TypeScript web app (public site + dashboards + admin) on Cloudflare Pages, free plan.
+- Supabase Free plan, two projects (staging, production): PostgreSQL + PostGIS, Auth, Storage, Edge Functions for all server work.
+- No automatic backups on Supabase Free: nightly backup job into the private vault repository.
+- M-PESA Daraja STK Push (Till) through Edge Functions; sandbox until Safaricom approves production.
+- Email checks only at launch; SMS codes later (paid).
 - Existing social media agent connected through an adapter: GitHub workflow dispatch in, database records out. No replacement agent.
 
 ## Decisions and approvals needed from the owner
 | Item | Owner action | Status |
 | --- | --- | --- |
-| Stack and running cost (about USD 30 to 45 a month) | Approve | Waiting |
-| New private GitHub repository "technapesa" | Create it | Waiting |
-| technapesa.com domain and DNS | Buy; give DNS access or move DNS to Cloudflare | Waiting |
-| Paybill or Till for Timsauti Ltd | Apply with Safaricom | Waiting |
+| Free plans only, no monthly spend | Agreed 2026-11-16 | Done |
+| New private GitHub repository "technapesa" | Owner creating | Waiting |
+| technapesa.com domain | Owner buying | Waiting |
+| Till for Timsauti Ltd | Owner applying with Safaricom | In progress |
+| Free Cloudflare and Supabase accounts | Owner creates when the build reaches them | Not started |
 | Daraja production approval | Go live letter after sandbox tests | Not started |
 | Data Commissioner (ODPC) registration | Register Timsauti Ltd | Not started |
 | Meta Tech Provider verification (posting to clients' Pages) | Business verification in Meta | Not started |
-| Prize challenges licence question | Advocate or Gambling Regulatory Authority | Challenges paused |
+| Prize challenges licence question | Advocate or Gambling Regulatory Authority | Paused, confirmed 2026-11-16 |
 
 ## Credentials still required (never pasted in chat; stored as server secrets)
 - Supabase project URL, anon key, service key (staging and production)
