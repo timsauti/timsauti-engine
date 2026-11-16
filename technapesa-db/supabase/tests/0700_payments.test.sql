@@ -30,3 +30,9 @@ select pg_temp.expect((select count(*) from public.notifications where topic = '
 set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select pg_temp.expect((select count(*) from public.admin_list_payments()) >= 2, 'staff with payments.view see payments');
 reset role;
+-- institution and sponsorship requests
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+select public.service_request_create(null, 'sponsorship', 'We would like to sponsor a challenge in January for our school.', '0712345678');
+select public.service_request_create(null, 'institution_plan', 'Please call us about social media for our clinic.', null);
+reset role;
+select pg_temp.expect((select count(*) from public.service_requests where service in ('sponsorship', 'institution_plan')) = 2, 'sponsorship and institution requests are accepted');
