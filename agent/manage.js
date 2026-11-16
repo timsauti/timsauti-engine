@@ -71,9 +71,9 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
       console.log('Published: ' + p.permalink); return;
     }
-    const fd = new FormData();
-    fd.append('source', new Blob([require('./strip').strip(fs.readFileSync(path.join(ROOT, p.image.file)))], { type: 'image/png' }), p.id + '.png');
-    fd.append('message', p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' '));
+    const fd = new FormData(); const imgFile = typeof p.image === 'string' ? p.image : p.image.file;   // agent drafts keep the poster path as a plain string
+    fd.append('source', new Blob([require('./strip').strip(fs.readFileSync(path.join(ROOT, imgFile)))], { type: 'image/png' }), p.id + '.png');
+    fd.append('message', p.caption + '\n\n' + (p.hashtags || page.tags.map((h) => '#' + h).join(' ')));
     const at = p.bookAt ? Date.parse(p.bookAt) : 0;   // owner post booked for a set time: Facebook holds it and publishes it then
     if (at > Date.now() + 15 * 60000) { fd.append('published', 'false'); fd.append('scheduled_publish_time', String(Math.floor(at / 1000))); } else fd.append('published', 'true');
     const r = await fetch(`https://graph.facebook.com/${GV}/${page.pageId}/photos`, { method: 'POST', headers: auth, body: fd, signal: AbortSignal.timeout(120000) });
