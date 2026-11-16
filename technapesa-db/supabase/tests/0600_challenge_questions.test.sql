@@ -25,9 +25,20 @@ select pg_temp.fails($$select public.story_save((select id from public.stories w
 select pg_temp.fails($$select public.story_save((select id from public.stories where author_id = '00000000-0000-0000-0000-0000000000c2' and challenge_id is not null limit 1), '', 'Too short', 'hustle')$$, 'answers need at least one full sentence');
 reset role;
 set role anon; select set_config('request.jwt.claims', '{"role":"anon"}', false);
-select pg_temp.expect((select question from public.challenge_list where slug = '01') like 'Pick the best grade%', 'challenge 01 is the boarding debate');
+select pg_temp.expect((select question from public.challenge_list where slug = '01') like 'One photo%', 'challenge 01 is the primary school photo challenge');
 select pg_temp.expect((select phase from public.challenge_list where slug = '02') = 'upcoming' or now() > '2026-11-24', 'challenge 02 is scheduled for next week');
 select pg_temp.expect((select sponsor_phone from public.challenge_list where slug = '01') = '+254705234763', 'the sponsor advert carries the school phone');
 reset role;
-select pg_temp.expect((select rules from public.challenges where slug = '01') like '%defend it in three sentences%', 'challenge 01 rules ask for three sentences');
+select pg_temp.expect((select rules from public.challenges where slug = '01') like '%checked for originality%', 'challenge 01 rules explain the originality check');
 select pg_temp.expect((select title from public.challenges where slug = '02') = 'The School Checklist', 'challenge 02 is the school checklist');
+-- photo challenge (Challenge 01 after migration 0900)
+reset role;
+update public.challenges set entry_kind = 'photo', opens_at = now() - interval '1 hour', entries_close_at = now() + interval '5 days', voting_close_at = now() + interval '5 days', results_at = null, winner_story_id = null where slug = '01';
+delete from public.stories where challenge_id = (select id from public.challenges where slug = '01');
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+select pg_temp.fails($$select public.challenge_photo_submit((select id from public.challenge_list where slug = '01'), 'My class seven photo with Mr Mutua, the teacher who believed in me.', '00000000-0000-0000-0000-0000000000c1/p.jpg', false)$$, 'entrants must confirm the photo is their own');
+select pg_temp.fails($$select public.challenge_photo_submit((select id from public.challenge_list where slug = '01'), 'My class seven photo with Mr Mutua, the teacher who believed in me.', null, true)$$, 'a photo challenge entry needs a photo');
+select public.challenge_photo_submit((select id from public.challenge_list where slug = '01'), 'My class seven photo with Mr Mutua, the teacher who believed in me.', '00000000-0000-0000-0000-0000000000c1/p.jpg', true);
+select pg_temp.expect((select status from public.stories where author_id = '00000000-0000-0000-0000-0000000000c1' and challenge_id = (select id from public.challenge_list where slug = '01')) = 'pending', 'photo entries wait for an originality check even from trusted writers');
+select pg_temp.expect((select original_declared_at is not null from public.stories where author_id = '00000000-0000-0000-0000-0000000000c1' and challenge_id = (select id from public.challenge_list where slug = '01')), 'the originality declaration is recorded');
+reset role;

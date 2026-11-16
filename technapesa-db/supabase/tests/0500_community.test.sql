@@ -64,7 +64,7 @@ reset role;
 
 -- Challenge 01 is published and open; entries, votes, judging and the winner
 select pg_temp.expect((select phase from public.challenge_list where slug = '01') in ('open', 'upcoming', 'voting', 'judging'), 'challenge 01 is published');
-update public.challenges set opens_at = now() - interval '1 day', entries_close_at = now() + interval '1 day', voting_close_at = now() + interval '2 days' where slug = '01';
+update public.challenges set entry_kind = 'text', opens_at = now() - interval '1 day', entries_close_at = now() + interval '1 day', voting_close_at = now() + interval '2 days' where slug = '01';
 set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
 select public.story_save(null, 'My phone repair hustle in Tala', repeat('I learnt phone repair from videos and now fix phones for my neighbours. ', 3), 'hustle', null, null, (select id from public.challenges where slug = '01'));
 select pg_temp.fails($$select public.story_save(null, 'A second entry for me', repeat('y', 100), 'tech', null, null, (select id from public.challenges where slug = '01'))$$, 'one entry per person per challenge');
