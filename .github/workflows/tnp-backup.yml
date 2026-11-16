@@ -1,0 +1,33 @@
+name: TECH na PESA nightly backup
+# Supabase Free keeps no backups, so every night a full copy (accounts, schema, data) goes to the private vault.
+# Also runs before every migration (see tnp-database.yml). Run logs show only file sizes.
+on:
+  schedule: [{ cron: '23 0 * * *' }]   # 03:23 Nairobi time
+  workflow_dispatch:
+concurrency: { group: tnp-database, cancel-in-progress: false }
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the private vault
+        env: { VAULT_TOKEN: '${{ secrets.VAULT_TOKEN }}' }
+        run: git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+      - name: Copy the database
+        working-directory: technapesa-db
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          VAULT_DIR: ${{ github.workspace }}/vault
+        run: |
+          npx -y supabase@2.122.0 link --project-ref "$PROJECT_REF" -p "$SUPABASE_DB_PASSWORD" >/dev/null 2>&1
+          bash scripts/backup.sh nightly
+      - name: Save to the vault
+        run: |
+          cd vault
+          git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
+          git add -A technapesa; git diff --cached --quiet && exit 0; git commit -q -m "TECH na PESA nightly backup"
+          for i in 1 2 3 4; do git pull -q --rebase -X theirs && git push -q && exit 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; exit 1
