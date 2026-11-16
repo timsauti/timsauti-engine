@@ -14,6 +14,8 @@ begin
 end $$;
 create temp table g (k text primary key, v text);
 grant all on g to anon, authenticated;
+-- migration 1000 opens trials on the live site; these tests start from the closed state
+update public.site_settings set value = 'false' where key = 'growth.trials_open';
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000f1', 'salon@test.local', '{"full_name":"Faith Salon","accepted_terms":true}'),

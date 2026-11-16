@@ -76,7 +76,7 @@ select pg_temp.expect((select status from public.profiles where id = '00000000-0
 select pg_temp.expect((select count(*) from public.audit_log where action = 'account.status_changed') = 1, 'status changes are audited');
 select public.admin_set_setting('growth.trial_days', '21');
 select pg_temp.expect((select value::int from public.site_settings where key = 'growth.trial_days') = 21, 'an administrator can change a setting');
-select pg_temp.expect((select count(*) from public.audit_log where action = 'setting.changed') = 1, 'setting changes are audited');
+select pg_temp.expect((select count(*) from public.audit_log where action = 'setting.changed' and entity_id = 'growth.trial_days') = 1, 'setting changes are audited');
 do $$ begin
   begin perform public.admin_set_role(auth.uid(), 'administrator', false); raise exception 'FAILED: admin removed own admin role';
   exception when others then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok: an administrator cannot remove their own administrator role'; end;
