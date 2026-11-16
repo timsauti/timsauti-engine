@@ -19,6 +19,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000f1', 'salon@test.local', '{"full_name":"Faith Salon","accepted_terms":true}'),
   ('00000000-0000-0000-0000-0000000000f2', 'copycat@test.local', '{"full_name":"Fred Copy","accepted_terms":true}');
 update public.site_settings set value = '14' where key = 'growth.trial_days';
+update public.site_settings set value = '"not_configured"' where key = 'growth.agent_integration';
 
 set role anon; select pg_temp.as_anon();
 select pg_temp.expect((select count(*) from public.growth_packages where not is_trial) = 4 and (select price_kes from public.growth_packages where key = 'growth') = 4500, 'visitors see the four packages with prices');

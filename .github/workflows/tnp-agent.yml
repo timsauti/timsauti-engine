@@ -1,0 +1,37 @@
+name: TECH na PESA agent link
+# Every hour: collects Digital Growth jobs from the platform and writes draft posts for staff to check,
+# then (only when the owner has switched it on) shares site content to his Pages. Logs show counts only.
+# Run by hand with selftest = yes to write sample drafts to the private vault without touching the platform or Facebook.
+on:
+  schedule: [{ cron: '41 * * * *' }]
+  workflow_dispatch:
+    inputs:
+      selftest: { description: 'yes for a sample run that changes nothing', required: false, default: 'no' }
+concurrency: { group: tnp-agent, cancel-in-progress: false }
+jobs:
+  link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund --ignore-scripts && npm rebuild @resvg/resvg-js >/dev/null 2>&1 || true
+      - name: Run
+        env:
+          SELFTEST: ${{ github.event.inputs.selftest == 'yes' && '1' || '0' }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FB_USER_TOKEN: ${{ secrets.FB_USER_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+          TNP_SITE_URL: ${{ vars.STAGING_URL || 'https://technapesa.pages.dev' }}
+        run: node agent/tnp.js
+      - name: Keep the sample run in the private vault
+        if: github.event.inputs.selftest == 'yes'
+        env: { VAULT_TOKEN: '${{ secrets.VAULT_TOKEN }}' }
+        run: |
+          git clone -q --depth 1 "https://x-access-token:${VAULT_TOKEN}@github.com/timsauti/timsauti-agent.git" vault
+          mkdir -p vault/data/tnp && rm -rf vault/data/tnp/selftest && cp -r data/tnp/selftest vault/data/tnp/
+          cd vault && git config user.name "timsauti-agent" && git config user.email "agent@users.noreply.github.com"
+          git add -A data/tnp && git commit -q -m "TECH na PESA agent sample run" && for i in 1 2 3; do git pull -q --rebase -X theirs && git push -q && exit 0; sleep 5; done; exit 1
