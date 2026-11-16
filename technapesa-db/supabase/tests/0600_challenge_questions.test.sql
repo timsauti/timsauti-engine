@@ -25,7 +25,9 @@ select pg_temp.fails($$select public.story_save((select id from public.stories w
 select pg_temp.fails($$select public.story_save((select id from public.stories where author_id = '00000000-0000-0000-0000-0000000000c2' and challenge_id is not null limit 1), '', 'Too short', 'hustle')$$, 'answers need at least one full sentence');
 reset role;
 set role anon; select set_config('request.jwt.claims', '{"role":"anon"}', false);
-select pg_temp.expect((select question from public.challenge_list where slug = '01') like 'At what grade%', 'challenge 01 asks about boarding');
+select pg_temp.expect((select question from public.challenge_list where slug = '01') like 'Pick the best grade%', 'challenge 01 is the boarding debate');
 select pg_temp.expect((select phase from public.challenge_list where slug = '02') = 'upcoming' or now() > '2026-11-24', 'challenge 02 is scheduled for next week');
 select pg_temp.expect((select sponsor_phone from public.challenge_list where slug = '01') = '+254705234763', 'the sponsor advert carries the school phone');
 reset role;
+select pg_temp.expect((select rules from public.challenges where slug = '01') like '%defend it in three sentences%', 'challenge 01 rules ask for three sentences');
+select pg_temp.expect((select title from public.challenges where slug = '02') = 'The School Checklist', 'challenge 02 is the school checklist');
