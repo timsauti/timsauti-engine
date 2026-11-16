@@ -72,7 +72,7 @@ function poster({ business, headline, sub, colours, photo }) {
   const W = 1080, H = 1350, p = palette(colours);
   // the client's own photo (owner rule: photos on posters where possible), darkened so the words stay readable
   const img = photo ? `<image href="data:${photo.type};base64,${photo.buf.toString('base64')}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/><rect width="${W}" height="${H}" fill="${p.bg}" opacity="0.52"/><rect width="${W}" height="${H}" fill="#000000" opacity="0.2"/>` : '';
-  const h = fit(String(headline || business).toUpperCase(), 900, 560, 'Montserrat', 900);
+  const h = fit(String(headline || business).toUpperCase(), 850, 560, 'Montserrat', 900);
   const s = sub ? fit(sub, 880, 220, 'Poppins', 500, 44, 30) : null;
   const top = 380 + (560 - h.l.length * h.s * 1.15) / 2 + h.s;
   const hl = h.l.map((t, i) => `<text x="90" y="${top + i * h.s * 1.15}" font-family="Montserrat" font-weight="900" font-size="${h.s}" fill="#ffffff">${esc(t)}</text>`).join('');
