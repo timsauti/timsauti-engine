@@ -1,0 +1,43 @@
+name: TECH na PESA database
+# Runs here (public repository, free build minutes) on the private timsauti/technapesa code.
+# Tests every migration on a throwaway database, then applies new migrations to staging.
+# Secrets in this repository: TNP_REPO_TOKEN (read only access to timsauti/technapesa), SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD.
+on:
+  workflow_dispatch:
+concurrency: { group: tnp-database, cancel-in-progress: false }
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc   # technapesa-staging (not a secret: it appears in the public site address)
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { repository: timsauti/technapesa, token: '${{ secrets.TNP_REPO_TOKEN }}' }
+      - name: Install PostgreSQL 16 with PostGIS
+        run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-16 postgresql-16-postgis-3 >/dev/null
+      - name: Run migrations and database tests on a throwaway database
+        run: bash scripts/test-db.sh
+  apply:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { repository: timsauti/technapesa, token: '${{ secrets.TNP_REPO_TOKEN }}' }
+      - name: Apply new migrations to staging
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          npx -y supabase@2.122.0 link --project-ref "$PROJECT_REF" -p "$SUPABASE_DB_PASSWORD"
+          npx -y supabase@2.122.0 db push -p "$SUPABASE_DB_PASSWORD" --include-all
+      - name: Point sign in links at the staging site
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SITE: ${{ vars.STAGING_URL || 'https://technapesa.pages.dev' }}
+        run: |
+          curl -fsS -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"site_url\":\"$SITE\",\"uri_allow_list\":\"$SITE/auth/callback/,$SITE/reset/,http://localhost:4321/auth/callback/,http://localhost:4321/reset/\",\"mailer_otp_exp\":3600,\"password_min_length\":10,\"security_update_password_require_reauthentication\":true}" >/dev/null
+          echo "auth settings updated"

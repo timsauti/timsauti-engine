@@ -1,0 +1,33 @@
+name: TECH na PESA grant first administrator
+# Run once by hand: gives the administrator role to an existing account (found by email) and records it in the audit log.
+on:
+  workflow_dispatch:
+    inputs:
+      email: { description: 'Email of the account to make administrator', required: true }
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc
+jobs:
+  grant:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Grant the administrator role
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          EMAIL: ${{ inputs.email }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request
+          email = os.environ['EMAIL'].strip().lower()
+          if not re.fullmatch(r"[^@\s']+@[^@\s']+\.[^@\s']+", email): raise SystemExit('not a valid email')
+          sql = f"""with u as (select id from auth.users where lower(email) = '{email}')
+          , g as (insert into public.user_roles (user_id, role) select id, 'administrator' from u on conflict do nothing returning user_id)
+          insert into public.audit_log (actor_kind, action, entity, entity_id, after, note)
+          select 'service', 'role.granted', 'user_role', id::text, '{{"role":"administrator"}}'::jsonb, 'first administrator, granted by the owner through GitHub' from u
+          returning entity_id"""
+          req = urllib.request.Request(f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query", data=json.dumps({'query': sql}).encode(),
+                headers={'Authorization': 'Bearer ' + os.environ['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'}, method='POST')
+          rows = json.loads(urllib.request.urlopen(req).read())
+          print('administrator granted' if rows else 'no account with that email yet: sign up on the site first')
+          if not rows: raise SystemExit(1)
+          PY
