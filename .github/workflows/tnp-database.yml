@@ -1,8 +1,9 @@
 name: TECH na PESA database
-# Runs here (public repository, free build minutes) on the private timsauti/technapesa code.
+# Runs here (public repository, free build minutes) on the public copy in technapesa-db/.
 # Tests every migration on a throwaway database, then applies new migrations to staging.
-# Secrets in this repository: TNP_REPO_TOKEN (read only access to timsauti/technapesa), SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD.
+# Secrets in this repository: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD.
 on:
+  push: { branches: [main], paths: ['technapesa-db/**', '.github/workflows/tnp-database.yml'] }
   workflow_dispatch:
 concurrency: { group: tnp-database, cancel-in-progress: false }
 env:
@@ -13,10 +14,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: { repository: timsauti/technapesa, token: '${{ secrets.TNP_REPO_TOKEN }}' }
       - name: Install PostgreSQL 16 with PostGIS
         run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-16 postgresql-16-postgis-3 >/dev/null
       - name: Run migrations and database tests on a throwaway database
+        working-directory: technapesa-db
         run: bash scripts/test-db.sh
   apply:
     needs: test
@@ -24,8 +25,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: { repository: timsauti/technapesa, token: '${{ secrets.TNP_REPO_TOKEN }}' }
       - name: Apply new migrations to staging
+        working-directory: technapesa-db
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
