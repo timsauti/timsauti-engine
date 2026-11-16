@@ -16,7 +16,6 @@ for f in roles schema data; do
   test -s "$OUT/$f.sql" || { echo "backup failed: $f is empty"; exit 1; }
   gzip -9 "$OUT/$f.sql"
 done
-grep -c . <(zcat "$OUT/schema.sql.gz") >/dev/null
 cat > "$OUT/README.txt" <<TXT
 TECH na PESA database backup, $STAMP ($LABEL)
 Restore into an empty Supabase project (see technapesa-db/README.md in timsauti-engine):
@@ -26,5 +25,5 @@ Restore into an empty Supabase project (see technapesa-db/README.md in timsauti-
 TXT
 ls -l "$OUT" | awk 'NR>1 {print $5, $9}'
 # Keep the newest 30 nightly copies in the working tree; older ones stay in git history.
-ls -d "$VAULT_DIR"/technapesa/backups/*-nightly 2>/dev/null | sort | head -n -30 | xargs -r rm -rf
+find "$VAULT_DIR/technapesa/backups" -maxdepth 1 -type d -name "*-nightly" | sort | head -n -30 | xargs -r rm -rf
 echo "backup saved: technapesa/backups/$STAMP-$LABEL"
