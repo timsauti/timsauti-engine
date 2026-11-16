@@ -1,5 +1,6 @@
 name: TECH na PESA nightly backup
 # Supabase Free keeps no backups, so every night a full copy (accounts, schema, data) goes to the private vault.
+# The same run ends finished free trials and sends trial reminders (public.growth_daily).
 # Also runs before every migration (see tnp-database.yml). Run logs show only file sizes.
 on:
   schedule: [{ cron: '23 0 * * *' }]   # 03:23 Nairobi time
@@ -25,7 +26,16 @@ jobs:
         run: |
           npx -y supabase@2.122.0 link --project-ref "$PROJECT_REF" -p "$SUPABASE_DB_PASSWORD" >/dev/null 2>&1
           bash scripts/backup.sh nightly
+      - name: Daily Digital Growth check (end finished trials, warn clients before the end)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          curl -fsS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d '{"query":"select public.growth_daily() as result"}' | python3 -c "import json,sys; d=json.load(sys.stdin); print('growth check:', d[0]['result'] if d else d)" \
+            || echo "growth check skipped (function not installed yet)"
       - name: Save to the vault
+        if: always()
         run: |
           cd vault
           git config user.name "timsauti-agent"; git config user.email "agent@users.noreply.github.com"
