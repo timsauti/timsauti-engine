@@ -82,6 +82,12 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     p.status = 'PUBLISHED'; p.publishedAt = at > Date.now() + 15 * 60000 ? new Date(at).toISOString() : new Date().toISOString(); if (at > Date.now()) p.bookedOnFacebook = true; p.fb = { postId: j.post_id || null, photoId: j.id || null }; p.permalink = j.id ? 'https://www.facebook.com/photo/?fbid=' + j.id : (j.post_id ? 'https://www.facebook.com/' + j.post_id.replace('_', '/posts/') : null);   // owner, 17 Nov: page_post ids did not open on his phone; photo links do
     fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
     console.log('Published: ' + p.permalink);
+  } else if (ACTION === 'permalink') {
+    // TARGET = one or more Facebook post ids (comma separated): logs the official link Facebook gives for each
+    for (const id of String(TARGET).split(',').map((x) => x.trim()).filter(Boolean)) {
+      const r = await fetch(`https://graph.facebook.com/${GV}/${id}?fields=permalink_url`, { headers: auth, signal: AbortSignal.timeout(30000) });
+      const j = await r.json().catch(() => ({})); console.log('permalink ' + id + ' ' + (j.permalink_url || mask(JSON.stringify(j)).slice(0, 200)));
+    }
   } else if (ACTION === 'history') {
     // read only: the Page's recent posts with their numbers, saved for analysis
     const out = []; let url = `${page.pageId}/posts?limit=50&fields=id,created_time,message,permalink_url,status_type,full_picture,attachments{media_type,type},shares,reactions.summary(true).limit(0),comments.summary(true).limit(0)`;
