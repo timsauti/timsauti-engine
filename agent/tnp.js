@@ -71,7 +71,7 @@ function fit(text, maxW, maxH, family, weight, max = 104, min = 44) {
   for (let s = max; s >= min; s -= 4) { const l = wrap(text, s, maxW, family, weight); if (l.length * s * 1.15 <= maxH) return { s, l }; }
   const l = wrap(text, min, maxW, family, weight); return { s: min, l: l.slice(0, Math.floor(maxH / (min * 1.15))) };
 }
-function poster({ business, headline, sub, colours, photo }) {
+function poster({ business, headline, sub, colours, photo, site }) {
   const W = 1080, H = 1350, p = palette(colours);
   // the client's own photo (owner rule: photos on posters where possible), darkened so the words stay readable
   const img = photo ? `<image href="data:${photo.type};base64,${photo.buf.toString('base64')}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/><rect width="${W}" height="${H}" fill="${p.bg}" opacity="0.52"/><rect width="${W}" height="${H}" fill="#000000" opacity="0.2"/>` : '';
@@ -89,6 +89,7 @@ function poster({ business, headline, sub, colours, photo }) {
     ${hl}${sl}
     <rect x="0" y="${H - 170}" width="${W}" height="170" fill="#000000" opacity="0.28"/>
     <text x="90" y="${H - 72}" font-family="Montserrat" font-weight="800" font-size="${name.s}" fill="${p.accent}">${esc(name.l[0] || business)}</text>
+    ${site ? `<text x="${W - 90}" y="${H - 74}" text-anchor="end" font-family="Poppins" font-weight="500" font-size="34" fill="#ffffff" opacity="0.85">${esc(site)}</text>` : ''}
   </svg>`;
   return new Resvg(svg, { font: FONT_OPTS, fitTo: { mode: 'width', value: W } }).render().asPng();
 }
@@ -492,7 +493,7 @@ async function runPage({ dry = false, only = null } = {}) {
     let post;
     try { post = await makePost(kind); } catch (e) { console.log(`page ${s.name}: writing failed ${mask(e.message)}`); }
     if (!post) { console.log(`page ${s.name}: nothing passed the checks`); continue; }
-    const png = poster({ business: 'TECH na PESA', headline: post.headline, sub: post.sub, colours: '#0b1d3a #f4b631' });
+    const png = poster({ business: 'TECH na PESA', headline: post.headline, sub: post.sub, colours: '#0b1d3a #f4b631', site: 'technapesa.co.ke' });
     if (dry) { out.push({ slot: s.name, kind: post.kind, headline: post.headline, sub: post.sub, caption: post.caption, comment: post.comment, png }); continue; }
     const pg = await pageToken(FB_PAGES[PAGE_KEY].id);
     if (!pg) { console.log('page: no posting key'); await telegram('TECH na PESA Page: the agent could not get the Page key, so nothing was posted. The Facebook login may need renewing.'); return; }
