@@ -516,6 +516,16 @@ async function runPage({ dry = false, only = null } = {}) {
   return out;
 }
 
+async function staffAlerts() {   // anything the site could not send straight away (owner's phone, Telegram)
+  try {
+    const rows = await rest('staff_alerts?sent_at=is.null&order=id.asc&limit=20&select=id,message');
+    for (const a of rows || []) { await telegram(`TECH na PESA: ${a.message}\nAdmin: ${SITE}/admin/growth/`); await rest(`staff_alerts?id=eq.${a.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ sent_at: new Date().toISOString() }) }); }
+    if ((rows || []).length) console.log(`alerts: ${rows.length} sent`);
+    const calls = await rest(`growth_clients?call_requested_at=lt.${new Date(Date.now() - 24 * 3600000).toISOString()}&call_done_at=is.null&select=business_name`);
+    if (calls.length && nowEAT().getUTCHours() === 9) await telegram(`TECH na PESA: ${calls.length} call request(s) still waiting more than a day: ${calls.map((c) => c.business_name).join(', ')}. Admin, Digital Growth.`);
+  } catch (e) { console.log('alerts: ' + mask(e.message)); }
+}
+
 async function billing() {
   try {
     const r = await rest('rpc/growth_billing_daily', { method: 'POST', body: '{}' });
@@ -549,6 +559,7 @@ if (require.main === module) (async () => {
     if (PAUSED) console.log('agent paused: no shares; drafts still prepared for staff');
     await runJobs();
     if ((await setting('social.page_plan', 'on').catch(() => 'on')) === 'on') await runPage(); else await runShares();
+    await staffAlerts();
     await billing();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();
