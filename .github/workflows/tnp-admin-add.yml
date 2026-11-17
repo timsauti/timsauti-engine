@@ -21,14 +21,15 @@ jobs:
           import json, os, re, urllib.request
           h = os.environ['H'].strip().lower()
           if not re.fullmatch(r'[0-9a-f]{64}', h): raise SystemExit('not a sha256')
-          sql = f"""with u as (select id from auth.users where encode(extensions.digest(lower(email), 'sha256'), 'hex') = '{h}')
+          sql = f"""with u as (select id from auth.users where encode(sha256(convert_to(lower(email), 'UTF8')), 'hex') = '{h}')
           , g as (insert into public.user_roles (user_id, role) select id from u cross join (values ('administrator')) r(role) where (select count(*) from u) = 1 on conflict do nothing returning user_id)
           insert into public.audit_log (actor_kind, action, entity, entity_id, after, note)
           select 'service', 'role.granted', 'user_role', id::text, '{{"role":"administrator"}}'::jsonb, 'administrator added by the owner through GitHub' from u where (select count(*) from u) = 1
           returning entity_id"""
           req = urllib.request.Request(f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query", data=json.dumps({'query': sql}).encode(),
                 headers={'Authorization': 'Bearer ' + os.environ['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'}, method='POST')
-          rows = json.loads(urllib.request.urlopen(req).read())
+          try: rows = json.loads(urllib.request.urlopen(req).read())
+          except urllib.error.HTTPError as e: raise SystemExit('database said: ' + e.read().decode()[:300])
           print('administrator granted' if rows else 'no matching account: sign up first with that email')
           if not rows: raise SystemExit(1)
           PY
