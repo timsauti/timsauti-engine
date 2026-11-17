@@ -36,3 +36,19 @@ select public.service_request_create(null, 'sponsorship', 'We would like to spon
 select public.service_request_create(null, 'institution_plan', 'Please call us about social media for our clinic.', null);
 reset role;
 select pg_temp.expect((select count(*) from public.service_requests where service in ('sponsorship', 'institution_plan')) = 2, 'sponsorship and institution requests are accepted');
+-- payment links: staff mark a pending payment as paid
+select pg_temp.expect((select value = '"links"'::jsonb from public.site_settings where key = 'payments.mode'), 'payments use Paystack payment links');
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+truncate t_ref;
+insert into t_ref select public.payment_create((select id from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'starter');
+select pg_temp.fails($$select public.admin_payment_mark_paid((select id from public.payments where reference = (select ref from t_ref)), 'T123456789')$$, 'clients cannot mark their own payment as paid');
+reset role;
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select public.admin_payment_mark_paid((select id from public.payments where reference = (select ref from t_ref)), 'T123456789');
+select pg_temp.fails($$select public.admin_payment_mark_paid((select id from public.payments where reference = (select ref from t_ref)), 'T999999999')$$, 'a payment cannot be marked paid twice');
+select pg_temp.fails($$select public.admin_payment_record((select id from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'starter', 'T123456789')$$, 'the same Paystack reference cannot be used twice');
+select public.admin_payment_record((select id from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'growth', 'T555555555');
+reset role;
+select pg_temp.expect((select status from public.payments where reference = (select ref from t_ref)) = 'success', 'staff can mark a payment as paid');
+select pg_temp.expect((select paid_until > now() + interval '2 months' from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'each payment adds a period to the subscription');
+select pg_temp.expect((select count(*) from public.audit_log where action = 'payment.marked_paid') = 2, 'marking payments as paid is audited');
