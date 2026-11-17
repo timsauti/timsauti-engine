@@ -52,3 +52,14 @@ reset role;
 select pg_temp.expect((select status from public.payments where reference = (select ref from t_ref)) = 'success', 'staff can mark a payment as paid');
 select pg_temp.expect((select paid_until > now() + interval '2 months' from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'each payment adds a period to the subscription');
 select pg_temp.expect((select count(*) from public.audit_log where action = 'payment.marked_paid') = 2, 'marking payments as paid is audited');
+-- renewals
+reset role; select set_config('request.jwt.claims', '{}', false);
+update public.growth_clients set paid_until = now() + interval '2 days', renewal_reminders = '{}' where business_name = 'Grace Bakery Kangundo';
+select pg_temp.expect((public.growth_billing_daily()->>'reminders')::int = 1, 'a client is reminded before the paid month ends');
+select pg_temp.expect((public.growth_billing_daily()->>'reminders')::int = 0, 'the same reminder is not sent twice');
+update public.growth_clients set paid_until = now() - interval '1 hour' where business_name = 'Grace Bakery Kangundo';
+select pg_temp.expect((public.growth_billing_daily()->>'lapsed')::int = 1, 'an unpaid package lapses when the month ends');
+select pg_temp.expect((select status from public.growth_clients where business_name = 'Grace Bakery Kangundo') = 'lapsed', 'the client shows as lapsed');
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+select pg_temp.expect(public.payment_create((select id from public.growth_clients where business_name = 'Grace Bakery Kangundo'), 'starter') like 'TNP-%', 'a lapsed client can pay again');
+reset role;

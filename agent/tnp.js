@@ -275,6 +275,14 @@ async function runShares() {
   }
 }
 
+async function billing() {
+  try {
+    const r = await rest('rpc/growth_billing_daily', { method: 'POST', body: '{}' });
+    console.log(`billing: ${r.reminders} reminders, ${r.lapsed} lapsed`);
+    if (r.lapsed) await telegram(`TECH na PESA: ${r.lapsed} Digital Growth package(s) ended without renewal. See Admin, Payments.`);
+  } catch (e) { console.log('billing: ' + mask(e.message)); }
+}
+
 async function selftest() {
   const out = path.join(ROOT, 'data', 'tnp', 'selftest'); fs.mkdirSync(out, { recursive: true });
   const brief = { business_name: 'Grace Bakery Kangundo', category: 'Retail', town: 'Kangundo', county: 'Machakos', description: 'Fresh bread, cakes and pastries baked daily in Kangundo town since 2019. Birthday and wedding cakes made to order.', products: 'Bread, birthday cakes, wedding cakes, pastries', audience: 'Families and event planners in Kangundo and Tala', objectives: 'More cake orders on WhatsApp', promotions: '', platforms: ['facebook', 'instagram'] };
@@ -296,5 +304,6 @@ if (require.main === module) (async () => {
     if (PAUSED) console.log('agent paused: no shares; drafts still prepared for staff');
     await runJobs();
     await runShares();
+    await billing();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();
