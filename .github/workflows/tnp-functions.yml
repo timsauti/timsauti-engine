@@ -21,7 +21,9 @@ jobs:
           PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          if [ -n "$GEMINI_API_KEY" ]; then npx -y supabase@2.122.0 secrets set --project-ref "$PROJECT_REF" GEMINI_API_KEY="$GEMINI_API_KEY" >/dev/null && echo "Planner key set"; fi
           if [ -n "$TELEGRAM_BOT_TOKEN" ]; then npx -y supabase@2.122.0 secrets set --project-ref "$PROJECT_REF" TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" TELEGRAM_OWNER_ID="$TELEGRAM_OWNER_ID" >/dev/null && echo "Phone alerts set"; fi
           if [ -n "$PAYSTACK_SECRET_KEY" ]; then
             npx -y supabase@2.122.0 secrets set --project-ref "$PROJECT_REF" PAYSTACK_SECRET_KEY="$PAYSTACK_SECRET_KEY" SITE_URL=https://technapesa.co.ke >/dev/null
@@ -38,4 +40,5 @@ jobs:
           npx -y supabase@2.122.0 functions deploy paystack-verify --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-mpesa --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy staff-alert --project-ref "$PROJECT_REF" --use-api
+          npx -y supabase@2.122.0 functions deploy budget-plan --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-webhook --project-ref "$PROJECT_REF" --use-api --no-verify-jwt

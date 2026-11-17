@@ -32,3 +32,18 @@ select pg_temp.fails($$select count(*) from public.staff_alerts$$, 'clients cann
 reset role;
 select pg_temp.expect((select count(*) from public.staff_alerts where client_id = (select v from s)::uuid) = 3, 'staff are alerted for the application, the call and the trial');
 select pg_temp.expect((select call_done_at is null and call_phone is not null from public.growth_clients where business_name = 'Dan Hardware Tala'), 'the call stays pending');
+-- name your budget
+select set_config('request.jwt.claims', '{"role":"service_role"}', false);
+select pg_temp.fails($$select public.quote_save('00000000-0000-0000-0000-0000000000d1', (select v from s)::uuid, 5000, 'x', '[{"key":"post","qty":30}]', 'too big')$$, 'a plan above the budget is refused');
+select pg_temp.fails($$select public.quote_save('00000000-0000-0000-0000-0000000000d1', (select v from s)::uuid, 5000, 'x', '[{"key":"post","qty":5},{"key":"free_money","qty":1}]', 'x')$$, 'items outside the rate card are refused');
+insert into s select public.quote_save('00000000-0000-0000-0000-0000000000d1', (select v from s limit 1)::uuid, 5000, 'More orders', '[{"key":"post","qty":10},{"key":"gbp_setup","qty":1}]', 'Ten posts and a Google profile');
+select pg_temp.expect((select total_kes from public.growth_quotes) = 5000, 'the database prices the plan from the rate card');
+select set_config('request.jwt.claims', '{}', false);
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000d1');
+create temp table r (v text);
+insert into r select public.payment_create_quote((select id from public.growth_quotes limit 1));
+select pg_temp.expect((select amount_kes from public.payments where reference = (select v from r)) = 5000, 'the plan payment carries the plan total');
+reset role; select set_config('request.jwt.claims', '{"role":"service_role"}', false);
+select pg_temp.expect(public.payment_confirm((select v from r), 'success', 500000, 'KES', 'mobile_money', 'q1', '{}') = 'confirmed', 'the plan payment is confirmed');
+select pg_temp.expect((select package_key = 'custom' and custom_plan->>'total_kes' = '5000' and status = 'subscribed' from public.growth_clients where business_name = 'Dan Hardware Tala'), 'the paid plan becomes the client package');
+select set_config('request.jwt.claims', '{}', false);
