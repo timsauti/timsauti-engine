@@ -32,6 +32,8 @@ const ok = (s) => !BANNED.test(s) && !BAIT.test(s);
 const MODELS = [process.env.GEMINI_MODEL || 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
 async function gemini(system, user) {
   let last;
+  for (let round = 0; round < 3; round++) {   // the free models allow a few calls a minute: wait and try again when all are busy
+  if (round) await new Promise((res) => setTimeout(res, 35000 * round));
   for (const m of MODELS) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, { method: 'POST', signal: AbortSignal.timeout(90000),
@@ -41,6 +43,7 @@ async function gemini(system, user) {
       if (!r.ok) { last = new Error('gemini ' + r.status); continue; }
       return JSON.parse(((j.candidates || [])[0].content.parts || []).map((x) => x.text || '').join('').replace(/^```json\s*|```\s*$/g, ''));
     } catch (e) { last = e; }
+  }
   }
   throw last || new Error('gemini unavailable');
 }
