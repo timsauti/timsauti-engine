@@ -571,6 +571,28 @@ async function runPage({ dry = false, only = null } = {}) {
   return out;
 }
 
+// WhatsApp notifications through the WhatsApp Business Cloud API (needs WHATSAPP_TOKEN and WHATSAPP_PHONE_ID secrets
+// and an approved utility template; see Admin, Settings, whatsapp.notifications).
+async function whatsappSend() {
+  try {
+    const cfg = await setting('whatsapp.notifications', { on: false });
+    const token = process.env.WHATSAPP_TOKEN, phoneId = process.env.WHATSAPP_PHONE_ID;
+    if (!cfg.on || !token || !phoneId) return;
+    await rest(`whatsapp_outbox?status=eq.queued&created_at=lt.${new Date(Date.now() - 2 * 86400000).toISOString()}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'skipped', error: 'older than two days' }) });
+    const rows = await rest('whatsapp_outbox?status=eq.queued&order=id.asc&limit=40&select=id,phone,title,body,link');
+    let sent = 0;
+    for (const m of rows || []) {
+      const params = [m.title, String(m.body || 'Open TECH na PESA for details.').slice(0, 500), `${SITE}${m.link || '/account/'}`].map((t) => ({ type: 'text', text: String(t).replace(/\s+/g, ' ').trim().slice(0, 900) }));
+      const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, { method: 'POST', signal: AbortSignal.timeout(30000), headers: { Authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', to: m.phone.replace('+', ''), type: 'template', template: { name: cfg.template || 'tnp_update', language: { code: cfg.language || 'en' }, components: [{ type: 'body', parameters: params }] } }) });
+      const j = await r.json().catch(() => ({}));
+      await rest(`whatsapp_outbox?id=eq.${m.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(r.ok ? { status: 'sent', sent_at: new Date().toISOString() } : { status: 'failed', error: mask(JSON.stringify(j.error || r.status)).slice(0, 300) }) });
+      if (r.ok) sent++;
+    }
+    if ((rows || []).length) console.log(`whatsapp: ${sent} of ${rows.length} sent`);
+  } catch (e) { console.log('whatsapp: ' + mask(e.message)); }
+}
+
 async function staffAlerts() {   // anything the site could not send straight away (owner's phone, Telegram)
   try {
     const rows = await rest('staff_alerts?sent_at=is.null&order=id.asc&limit=20&select=id,message');
@@ -616,5 +638,6 @@ if (require.main === module) (async () => {
     if ((await setting('social.page_plan', 'on').catch(() => 'on')) === 'on') await runPage(); else await runShares();
     await staffAlerts();
     await billing();
+    await whatsappSend();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();

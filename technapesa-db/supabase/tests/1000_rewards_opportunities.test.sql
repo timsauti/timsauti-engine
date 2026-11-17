@@ -39,3 +39,14 @@ select pg_temp.expect((select count(*) from public.opportunities) = 1, 'publishe
 select pg_temp.expect((select count(*) from public.site_search_opportunities('digital machakos')) = 1, 'search finds opportunities');
 select pg_temp.expect((select count(*) from public.points_leaderboard(10)) >= 1, 'the monthly leaderboard is public');
 reset role; select set_config('request.jwt.claims', '{}', false);
+-- WhatsApp queue
+update public.profiles set phone = '+254712000111' where id = '00000000-0000-0000-0000-0000000000e2';
+select public.notify('00000000-0000-0000-0000-0000000000e2', 'billing', 'Payment received: KSh 2500', 'Starter package', '/account/growth/');
+select pg_temp.expect((select count(*) from public.whatsapp_outbox where user_id = '00000000-0000-0000-0000-0000000000e2') = 1, 'billing updates are queued for WhatsApp');
+select public.notify('00000000-0000-0000-0000-0000000000e2', 'news', 'Weekly news', null, null);
+select pg_temp.expect((select count(*) from public.whatsapp_outbox where user_id = '00000000-0000-0000-0000-0000000000e2') = 1, 'news is not sent on WhatsApp');
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000e2');
+select public.whatsapp_set_mine(false);
+reset role;
+select public.notify('00000000-0000-0000-0000-0000000000e2', 'billing', 'Renewal reminder', null, null);
+select pg_temp.expect((select count(*) from public.whatsapp_outbox where user_id = '00000000-0000-0000-0000-0000000000e2') = 1, 'members who switch WhatsApp off get nothing there');
