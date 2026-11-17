@@ -290,6 +290,9 @@ const NEWS_FEEDS = [
   { name: 'Kenyan Wall Street', url: 'https://kenyanwallstreet.com/feed/' },
   { name: 'TechCabal', url: 'https://techcabal.com/feed/', kenyaOnly: true },
   { name: 'Techish Kenya', url: 'https://techish.co.ke/feed/' },
+  { name: 'HapaKenya', url: 'https://hapakenya.com/feed/' },
+  { name: 'Capital FM Business', url: 'https://www.capitalfm.co.ke/business/feed/' },
+  { name: 'Kenyans.co.ke', url: 'https://www.kenyans.co.ke/feeds/news', kenyaOnly: false, money: true },
 ];
 const TIP_TOPICS = ['keeping your M-PESA PIN safe', 'spotting fake M-PESA messages', 'saving with M-Shwari, KCB M-PESA or a chama', 'making your phone battery last longer',
   'freeing up storage on an Android phone', 'two step verification on WhatsApp', 'spotting online job scams', 'buying a second hand phone safely', 'using Google Maps to get customers to your shop',
@@ -317,14 +320,15 @@ async function feedItems() {
   const out = [];
   for (const f of NEWS_FEEDS) {
     try {
-      const r = await fetch(f.url, { headers: { 'user-agent': 'TECHnaPESA/1.0 (+https://technapesa.co.ke)' }, signal: AbortSignal.timeout(30000) });
+      const r = await fetch(f.url, { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36', accept: 'application/rss+xml, application/xml, text/xml, */*' }, signal: AbortSignal.timeout(30000) });
       if (!r.ok) { console.log(`news: ${f.name} ${r.status}`); continue; }
       const xml = await r.text();
       for (const it of xml.split(/<item[\s>]/i).slice(1, 25)) {
         const title = strip(tag(it, 'title')), link = strip(tag(it, 'link')), when = Date.parse(strip(tag(it, 'pubDate')));
         const text = strip(tag(it, 'content:encoded') || tag(it, 'description'));
-        if (!title || !/^https:\/\//.test(link) || !when || Date.now() - when > 36 * 3600000 || text.length < 300) continue;
+        if (!title || !/^https:\/\//.test(link) || !when || Date.now() - when > 36 * 3600000 || text.length < 250) continue;
         if (f.kenyaOnly && !/kenya|nairobi|safaricom|m-pesa/i.test(title + ' ' + text)) continue;
+        if (f.money && !/m-pesa|mpesa|safaricom|airtel|bank|loan|cbk|kra|tax|fuliza|phone|internet|data|digital|app|online|startup|fintech|business|shilling|price/i.test(title)) continue;
         out.push({ source: f.name, title, link, when, text: text.slice(0, 5000) });
       }
     } catch (e) { console.log(`news: ${f.name} unreachable`); }
@@ -527,6 +531,7 @@ async function selftest() {
   const pagePosts = await runPage({ dry: true }).catch((e) => { console.log('page dry run: ' + mask(e.message)); return []; });
   pagePosts.forEach((p) => { fs.writeFileSync(path.join(out, `page-${p.slot}.png`), p.png); delete p.png; });
   fs.writeFileSync(path.join(out, 'page.json'), JSON.stringify(pagePosts, null, 1));
+  for (const p of pagePosts) console.log(`\n=== PAGE SAMPLE ${p.slot} (${p.kind}) ===\nPOSTER: ${p.headline} | ${p.sub}\nCAPTION:\n${p.caption}\nFIRST COMMENT: ${p.comment}`);
   const key = await serviceKey().then(() => 'platform key ok').catch((e) => 'platform key: ' + mask(e.message));
   const pg = await pageToken(FB_PAGES.techpulse.id).then((p) => (p ? `page key ok, page name ${p.name}` : 'no page key')).catch(() => 'page check failed');
   fs.writeFileSync(path.join(out, 'checks.json'), JSON.stringify({ at: new Date().toISOString(), drafts: posts.length, key, page: pg }, null, 1));
