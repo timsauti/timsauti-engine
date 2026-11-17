@@ -67,7 +67,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       const r = await fetch(`https://graph.facebook.com/${GV}/${page.pageId}/feed`, { method: 'POST', headers: auth, body, signal: AbortSignal.timeout(120000) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.id) { p.status = 'FAILED'; p.error = mask(JSON.stringify(j)).slice(0, 300); console.log('Failed: ' + p.error); fs.writeFileSync(file, JSON.stringify(posts, null, 1)); process.exit(1); }
-      p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { postId: j.id, photoId: ids[0] }; p.permalink = 'https://www.facebook.com/' + j.id;
+      p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { postId: j.id, photoId: ids[0] }; p.permalink = 'https://www.facebook.com/' + j.id.replace('_', '/posts/');
       fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
       console.log('Published: ' + p.permalink); return;
     }
@@ -79,7 +79,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const r = await fetch(`https://graph.facebook.com/${GV}/${page.pageId}/photos`, { method: 'POST', headers: auth, body: fd, signal: AbortSignal.timeout(120000) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !(j.post_id || j.id)) { p.status = 'FAILED'; p.error = mask(JSON.stringify(j)).slice(0, 300); console.log('Failed: ' + p.error); fs.writeFileSync(file, JSON.stringify(posts, null, 1)); process.exit(1); }
-    p.status = 'PUBLISHED'; p.publishedAt = at > Date.now() + 15 * 60000 ? new Date(at).toISOString() : new Date().toISOString(); if (at > Date.now()) p.bookedOnFacebook = true; p.fb = { postId: j.post_id || null, photoId: j.id || null }; p.permalink = j.post_id ? 'https://www.facebook.com/' + j.post_id : null;
+    p.status = 'PUBLISHED'; p.publishedAt = at > Date.now() + 15 * 60000 ? new Date(at).toISOString() : new Date().toISOString(); if (at > Date.now()) p.bookedOnFacebook = true; p.fb = { postId: j.post_id || null, photoId: j.id || null }; p.permalink = j.id ? 'https://www.facebook.com/photo/?fbid=' + j.id : (j.post_id ? 'https://www.facebook.com/' + j.post_id.replace('_', '/posts/') : null);   // owner, 17 Nov: page_post ids did not open on his phone; photo links do
     fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
     console.log('Published: ' + p.permalink);
   } else if (ACTION === 'history') {
