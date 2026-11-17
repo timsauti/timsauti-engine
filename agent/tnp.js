@@ -366,7 +366,7 @@ Return JSON: {"caption":"80 to 150 words: what happened, why it matters to ordin
         `REPORT:\n${it.text}\n\nPOST:\n${headline}\n${caption}`);
       const bad = (check.unsupported || []).filter(Boolean);
       if (bad.length) { console.log('news: a draft failed the fact check, writing again'); feedback = `\n\nYour last draft included claims the report does not support. Leave these out: ${bad.join('; ')}`; continue; }
-      return { kind: 'news', ref: 'news:' + sha(it.link), headline, sub: `Source: ${it.source}`, caption: caption + `\n\nSource: ${it.source}`,
+      return { kind: 'news', ref: 'news:' + sha(it.link), headline, sub: `Source: ${it.source}`, caption: caption + `\n\nSource: ${it.source}`, report: it,
         comment: `More Kenyan tech and money stories, and a community where you can share your own: ${SITE}/community/`, link: SITE + '/community/', alsoRef: 'news:' + sha(it.title.toLowerCase()) };
     }
   }
@@ -389,7 +389,7 @@ ${PAGE_RULES}
 Return JSON: {"caption":"80 to 140 words","headline":"poster headline, at most 7 words","sub":"poster line, at most 12 words"}`, `Topic: ${topic}`);
     const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
     if (caption.length >= 200 && ok(caption + ' ' + headline + ' ' + sub) && !/https?:\/\/|www\.|\*\d+#|ksh\s?\d|\d+\s?%/i.test(caption))
-      return { kind: 'tip', ref: 'tip:' + topic, headline, sub, caption, comment: `More practical tech and money tips for Kenyans: ${SITE}/`, link: SITE + '/' };
+      return { kind: 'tip', ref: 'tip:' + topic, topic, headline, sub, caption, comment: `More practical tech and money tips for Kenyans: ${SITE}/`, link: SITE + '/' };
   }
   return null;
 }
@@ -455,6 +455,52 @@ Introduce the story and its writer warmly, give a taste of it without retelling 
   return w ? { kind: 'promo', ref: pr.key, ...w, comment: `Find out more: ${SITE}${pr.path}`, link: SITE + pr.path } : null;
 }
 
+// Every news story and tip the Page posts also becomes a full article on technapesa.co.ke (owner, 17 Nov 2026),
+// and the Facebook post's first comment links to it. News articles are written only from the report and fact checked.
+const slugify = (t) => String(t).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'article';
+async function uploadPublic(objectPath, png) {
+  const k = await serviceKey();
+  const r = await fetch(`${SB}/storage/v1/object/site-media/${objectPath}`, { method: 'POST', signal: AbortSignal.timeout(60000), headers: { apikey: k, Authorization: 'Bearer ' + k, 'content-type': 'image/png', 'x-upsert': 'true' }, body: png });
+  if (!r.ok) throw new Error('upload ' + r.status);
+  return `${SB}/storage/v1/object/public/site-media/${objectPath}`;
+}
+async function writeArticle(post, png) {
+  if (!['news', 'tip'].includes(post.kind)) return null;
+  const done = await rest(`articles?origin_ref=eq.${encodeURIComponent(post.ref)}&select=slug`);
+  if (done.length) return done[0].slug;
+  const news = post.kind === 'news';
+  const brief = news ? `Source: ${post.report.source}\nTitle: ${post.report.title}\nReport: ${post.report.text}` : `Topic: ${post.topic}\nThe Facebook post said: ${post.caption}`;
+  const system = news
+    ? `You write news articles for the TECH na PESA website (technology and money for ordinary Kenyans). Rewrite the report fully in your own words.
+Use ONLY facts in the report. Never add numbers, names, dates, prices, quotes or claims that are not in it. No background knowledge of your own.
+British English, plain and clear, short paragraphs separated by a blank line. No dashes, no emojis, no bullet symbols, no web addresses.
+Return JSON: {"title":"at most 12 words","dek":"one sentence summary, at most 30 words","category":"one of technology, money, mpesa, business, opportunities","body":"250 to 450 words: what happened, the key facts, and what it means for ordinary Kenyans"}`
+    : `You write practical guides for the TECH na PESA website (technology and money for ordinary Kenyans).
+Expand the topic into a clear, safe, step by step guide. Never state fees, charges, interest rates, USSD codes, phone numbers, prices or statistics. No medical, legal or investment advice.
+British English, short paragraphs separated by a blank line; you may use up to three short subheadings written as lines starting with "## ". No dashes, no emojis, no bullet symbols, no web addresses.
+Return JSON: {"title":"at most 12 words","dek":"one sentence summary, at most 30 words","category":"one of technology, money, mpesa, business, guides","body":"300 to 500 words"}`;
+  for (let t = 0; t < 2; t++) {
+    const w = await gemini(system, brief);
+    const title = clean(w.title).replace(/[.!]+$/, ''), dek = clean(w.dek || ''), body = String(w.body || '').split(/\n+/).map((x) => clean(x)).filter(Boolean).join('\n\n');
+    if (title.length < 8 || body.length < 900 || !ok(title + ' ' + dek + ' ' + body) || /https?:\/\/|www\./i.test(body)) continue;
+    if (!news && /\*\d+#|ksh\s?\d|\d+\s?%/i.test(body)) continue;
+    if (news) {
+      const check = await gemini('You are a careful fact checker. List only real factual claims in the article (numbers, names, dates, events, quotes) that the report does not support or that contradict it. Return JSON: {"unsupported": ["..."]}', `REPORT:\n${post.report.text}\n\nARTICLE:\n${title}\n${dek}\n${body}`);
+      if ((check.unsupported || []).filter(Boolean).length) { console.log('article: failed the fact check'); continue; }
+    }
+    const cat = ['technology', 'money', 'mpesa', 'business', 'opportunities', 'guides'].includes(w.category) ? w.category : (news ? 'technology' : 'guides');
+    let slug = slugify(title);
+    if ((await rest(`articles?slug=eq.${slug}&select=id`)).length) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    let cover = null;
+    try { cover = await uploadPublic(`articles/${slug}.png`, png); } catch (e) { console.log('article: cover upload failed'); }
+    await rest('articles', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ slug, title, dek: dek.slice(0, 300), body, category: cat, cover_url: cover, cover_alt: post.headline,
+      source_name: news ? post.report.source : null, source_url: news ? post.report.link : null, origin: 'agent', origin_ref: post.ref, status: 'published' }) });
+    console.log(`article: published ${post.kind}`);
+    return slug;
+  }
+  return null;
+}
+
 async function fbPhoto(pg, png, caption) {
   const fd = new FormData();
   fd.append('source', new Blob([png], { type: 'image/png' }), 'post.png');
@@ -500,6 +546,10 @@ async function runPage({ dry = false, only = null } = {}) {
     if (!post) { console.log(`page ${s.name}: nothing passed the checks`); continue; }
     const png = poster({ business: 'TECH na PESA', headline: post.headline, sub: post.sub, colours: '#0b1d3a #f4b631', site: 'technapesa.co.ke' });
     if (dry) { out.push({ slot: s.name, kind: post.kind, headline: post.headline, sub: post.sub, caption: post.caption, comment: post.comment, png }); continue; }
+    try {
+      const slug = await writeArticle(post, png);
+      if (slug) { post.link = `${SITE}/a/${slug}`; post.comment = post.kind === 'news' ? `Read the full story on TECH na PESA: ${post.link}` : `Read the full step by step guide on TECH na PESA: ${post.link}`; }
+    } catch (e) { console.log('article: ' + mask(e.message)); }
     const pg = await pageToken(FB_PAGES[PAGE_KEY].id);
     if (!pg) { console.log('page: no posting key'); await telegram('TECH na PESA Page: the agent could not get the Page key, so nothing was posted. The Facebook login may need renewing.'); return; }
     if (!FB_PAGES[PAGE_KEY].mustBeNamed.test(pg.name)) { console.log('page: not renamed to TECH na PESA yet'); if (h === 9) await telegram('TECH na PESA Page: posting is ready, but the Page is not named TECH na PESA yet on Facebook, so nothing went out.'); return; }
