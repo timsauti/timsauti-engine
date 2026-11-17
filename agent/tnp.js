@@ -349,21 +349,26 @@ async function planNews() {
 Choose the story most useful or interesting to ordinary Kenyans: mobile money, phones, internet, banks and saving, jobs and skills, small business, prices of digital services, Kenyan startups.
 Never choose politics, crime, court cases, deaths, accidents, health claims, adverts or press releases that only promote one product. If none fit, return -1.
 Return JSON: {"index": number}`, list);
-  const it = items[Number(pick.index)];
-  if (!it) return null;
-  for (let t = 0; t < 3; t++) {
-    const w = await gemini(`You write news posts for the TECH na PESA Facebook Page. Rewrite the report below fully in your own words.
-Use ONLY facts in the report. Never add numbers, names, dates, prices, quotes or claims that are not in it. Keep figures exactly as given.
+  const first = items[Number(pick.index)];
+  if (!first) return null;
+  const order = [first].concat(items.filter((x) => x !== first).slice(0, 2));   // if a story keeps failing the check, try the next one
+  for (const it of order) {
+    let feedback = '';
+    for (let t = 0; t < 3; t++) {
+      const w = await gemini(`You write news posts for the TECH na PESA Facebook Page. Rewrite the report below fully in your own words.
+Use ONLY facts in the report. Never add numbers, names, dates, prices, quotes or claims that are not in it. Keep figures exactly as given. Do not add background knowledge of your own.
 ${PAGE_RULES}
 Return JSON: {"caption":"80 to 150 words: what happened, why it matters to ordinary Kenyans, and a closing question","headline":"poster headline, at most 8 words","sub":"poster line, at most 14 words"}`,
-      `Source: ${it.source}\nTitle: ${it.title}\nReport: ${it.text}`);
-    const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
-    if (caption.length < 200 || !ok(caption + ' ' + headline + ' ' + sub) || /https?:\/\/|www\./i.test(caption)) continue;
-    const check = await gemini('You are a strict fact checker. Compare the post with the report. List every number, name, date or claim in the post (or on its poster lines) that the report does not support. Return JSON: {"unsupported": ["..."]}',
-      `REPORT:\n${it.text}\n\nPOST:\n${headline}\n${sub}\n${caption}`);
-    if ((check.unsupported || []).length) { console.log('news: a draft failed the fact check, writing again'); continue; }
-    return { kind: 'news', ref: 'news:' + sha(it.link), headline, sub: `Source: ${it.source}`, caption: caption + `\n\nSource: ${it.source}`,
-      comment: `More Kenyan tech and money stories, and a community where you can share your own: ${SITE}/community/`, link: SITE + '/community/', alsoRef: 'news:' + sha(it.title.toLowerCase()) };
+        `Source: ${it.source}\nTitle: ${it.title}\nReport: ${it.text}${feedback}`);
+      const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
+      if (caption.length < 200 || !ok(caption + ' ' + headline + ' ' + sub) || /https?:\/\/|www\./i.test(caption)) continue;
+      const check = await gemini('You are a careful fact checker. Compare the post with the report. List only real factual claims in the post (numbers, names, dates, events, quotes) that the report does not support or that contradict it. Opinions, the closing question and general phrasing about why it matters to readers are fine. Return JSON: {"unsupported": ["..."]}',
+        `REPORT:\n${it.text}\n\nPOST:\n${headline}\n${caption}`);
+      const bad = (check.unsupported || []).filter(Boolean);
+      if (bad.length) { console.log('news: a draft failed the fact check, writing again'); feedback = `\n\nYour last draft included claims the report does not support. Leave these out: ${bad.join('; ')}`; continue; }
+      return { kind: 'news', ref: 'news:' + sha(it.link), headline, sub: `Source: ${it.source}`, caption: caption + `\n\nSource: ${it.source}`,
+        comment: `More Kenyan tech and money stories, and a community where you can share your own: ${SITE}/community/`, link: SITE + '/community/', alsoRef: 'news:' + sha(it.title.toLowerCase()) };
+    }
   }
   return null;
 }
