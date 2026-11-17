@@ -14,6 +14,7 @@ const mask = (s) => String(s || '').replace(/access_token=[^&"\s]+/g, 'access_to
 const { ACTION, TARGET, PAGE } = process.env;
 const page = PAGES[PAGE]; if (!page) { console.log('Unknown page'); process.exit(1); }
 let auth;
+async function officialLink(id) { if (!id) return null; try { const r = await fetch(`https://graph.facebook.com/${GV}/${id}?fields=permalink_url`, { headers: auth, signal: AbortSignal.timeout(30000) }); const j = await r.json(); return j.permalink_url || null; } catch (e) { return null; } }
 try { fs.mkdirSync(path.join(ROOT, 'data', PAGE), { recursive: true }); } catch (e) {}
 const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.jsonl'), JSON.stringify(Object.assign({ ts: new Date().toISOString() }, o)) + '\n');
 (async () => {
@@ -68,6 +69,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.id) { p.status = 'FAILED'; p.error = mask(JSON.stringify(j)).slice(0, 300); console.log('Failed: ' + p.error); fs.writeFileSync(file, JSON.stringify(posts, null, 1)); process.exit(1); }
       p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { postId: j.id, photoId: ids[0] }; p.permalink = 'https://www.facebook.com/' + j.id.replace('_', '/posts/');
+      p.permalink = (await officialLink(p.fb.postId)) || p.permalink;   // owner, 17 Nov: Facebook's own link opens on his phone
       fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
       console.log('Published: ' + p.permalink); return;
     }
@@ -80,6 +82,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !(j.post_id || j.id)) { p.status = 'FAILED'; p.error = mask(JSON.stringify(j)).slice(0, 300); console.log('Failed: ' + p.error); fs.writeFileSync(file, JSON.stringify(posts, null, 1)); process.exit(1); }
     p.status = 'PUBLISHED'; p.publishedAt = at > Date.now() + 15 * 60000 ? new Date(at).toISOString() : new Date().toISOString(); if (at > Date.now()) p.bookedOnFacebook = true; p.fb = { postId: j.post_id || null, photoId: j.id || null }; p.permalink = j.id ? 'https://www.facebook.com/photo/?fbid=' + j.id : (j.post_id ? 'https://www.facebook.com/' + j.post_id.replace('_', '/posts/') : null);   // owner, 17 Nov: page_post ids did not open on his phone; photo links do
+      p.permalink = (await officialLink(p.fb.postId)) || p.permalink;   // owner, 17 Nov: Facebook's own link opens on his phone
     fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
     console.log('Published: ' + p.permalink);
   } else if (ACTION === 'permalink') {
