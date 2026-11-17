@@ -275,6 +275,239 @@ async function runShares() {
   }
 }
 
+// ---------- 3) the TECH na PESA Page, run by the agent (owner, 17 Nov 2026) ----------
+// Three designed posts a day: 7:30am a question, 12:30pm a tip or site content, 6:30pm Kenyan tech and money news.
+// Every post is a poster with a caption; the website link always goes in the first comment, never in the post.
+// News comes only from real reports by Kenyan tech and business outlets, rewritten in our words, checked against the
+// report, and credited. Switch off with Admin, Settings, social.page_plan = off (or the PAUSE file).
+const crypto = require('crypto');
+const PAGE_KEY = 'techpulse';
+const SLOTS = [{ name: 'morning', hour: 7, kind: 'question' }, { name: 'midday', hour: 12, kind: 'midday' }, { name: 'evening', hour: 18, kind: 'news' }];
+const MIDDAY = { 0: 'tip', 1: 'challenge', 2: 'tip', 3: 'site', 4: 'tip', 5: 'challenge', 6: 'site' };   // by weekday, Sunday = 0
+const NEWS_FEEDS = [
+  { name: 'Techweez', url: 'https://techweez.com/feed/' },
+  { name: 'TechTrendsKE', url: 'https://www.techtrendske.co.ke/feed/' },
+  { name: 'Kenyan Wall Street', url: 'https://kenyanwallstreet.com/feed/' },
+  { name: 'TechCabal', url: 'https://techcabal.com/feed/', kenyaOnly: true },
+  { name: 'Techish Kenya', url: 'https://techish.co.ke/feed/' },
+];
+const TIP_TOPICS = ['keeping your M-PESA PIN safe', 'spotting fake M-PESA messages', 'saving with M-Shwari, KCB M-PESA or a chama', 'making your phone battery last longer',
+  'freeing up storage on an Android phone', 'two step verification on WhatsApp', 'spotting online job scams', 'buying a second hand phone safely', 'using Google Maps to get customers to your shop',
+  'setting up a free Google Business Profile', 'using WhatsApp Business labels and catalogues', 'budgeting a monthly salary', 'tracking small business sales on your phone',
+  'avoiding loan app traps', 'protecting your ID number online', 'backing up photos and contacts', 'saving mobile data', 'making better product photos with a phone',
+  'writing a strong CV on your phone', 'using free online courses to learn a skill', 'separating business money from personal money', 'pricing your products or services',
+  'recognising SIM swap fraud', 'safe online shopping in Kenya', 'using Fuliza wisely', 'keeping a simple emergency fund', 'getting more from Facebook Marketplace',
+  'creating strong passwords you can remember', 'checking a business is real before paying', 'turning a hobby into side income'];
+const QUESTION_TOPICS = ['the first phone you ever owned', 'the best money lesson you learnt the hard way', 'an app you cannot live without', 'how you save money each month',
+  'a side hustle that worked for you', 'what you would do with KSh 10,000 to start a business', 'the most useful thing you learnt on YouTube', 'how M-PESA changed your family',
+  'a scam message you once received', 'the skill every young Kenyan should learn', 'buying online versus buying in the shop', 'chamas: are they still worth it',
+  'working from home in Kenya', 'the one tech gadget you would buy next', 'how much data you use in a week', 'money habits you learnt from your parents',
+  'a local business you love and why', 'what makes you trust an online seller', 'cash or M-PESA in your daily life', 'the job that will matter most in ten years'];
+const PAGE_RULES = `Rules: British English only. Friendly, plain and specific, written for ordinary Kenyans. No emojis, no dashes of any kind, no bullet symbols, no hashtags.
+Never ask people to comment, like, share, tag, type or vote. End with one natural, specific question.
+Never use: testament, whether, game changer, unlock, delve, dive in, buckle up, revolutionise, supercharge, are you ready.
+Never write a web address; the link is added in the first comment automatically.`;
+const sha = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 16);
+const strip = (h) => String(h || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#8217;|&rsquo;/g, "'").replace(/&#8216;|&lsquo;/g, "'").replace(/&#8220;|&#8221;|&ldquo;|&rdquo;/g, '"').replace(/&#8211;|&#8212;/g, ', ')
+  .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+const tag = (x, t) => { const m = x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`, 'i')); return m ? m[1] : ''; };
+
+async function feedItems() {
+  const out = [];
+  for (const f of NEWS_FEEDS) {
+    try {
+      const r = await fetch(f.url, { headers: { 'user-agent': 'TECHnaPESA/1.0 (+https://technapesa.co.ke)' }, signal: AbortSignal.timeout(30000) });
+      if (!r.ok) { console.log(`news: ${f.name} ${r.status}`); continue; }
+      const xml = await r.text();
+      for (const it of xml.split(/<item[\s>]/i).slice(1, 25)) {
+        const title = strip(tag(it, 'title')), link = strip(tag(it, 'link')), when = Date.parse(strip(tag(it, 'pubDate')));
+        const text = strip(tag(it, 'content:encoded') || tag(it, 'description'));
+        if (!title || !/^https:\/\//.test(link) || !when || Date.now() - when > 36 * 3600000 || text.length < 300) continue;
+        if (f.kenyaOnly && !/kenya|nairobi|safaricom|m-pesa/i.test(title + ' ' + text)) continue;
+        out.push({ source: f.name, title, link, when, text: text.slice(0, 5000) });
+      }
+    } catch (e) { console.log(`news: ${f.name} unreachable`); }
+  }
+  return out.sort((a, b) => b.when - a.when);
+}
+
+async function planNews() {
+  const used = new Set((await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.news&select=ref`)).map((x) => x.ref));
+  const items = (await feedItems()).filter((i) => !used.has('news:' + sha(i.link)) && !used.has('news:' + sha(i.title.toLowerCase())));
+  if (!items.length) return null;
+  const list = items.slice(0, 15).map((i, n) => `${n}. [${i.source}] ${i.title}: ${i.text.slice(0, 300)}`).join('\n');
+  const pick = await gemini(`You choose one news story for the TECH na PESA Facebook Page (technology, money and business for ordinary Kenyans).
+Choose the story most useful or interesting to ordinary Kenyans: mobile money, phones, internet, banks and saving, jobs and skills, small business, prices of digital services, Kenyan startups.
+Never choose politics, crime, court cases, deaths, accidents, health claims, adverts or press releases that only promote one product. If none fit, return -1.
+Return JSON: {"index": number}`, list);
+  const it = items[Number(pick.index)];
+  if (!it) return null;
+  for (let t = 0; t < 3; t++) {
+    const w = await gemini(`You write news posts for the TECH na PESA Facebook Page. Rewrite the report below fully in your own words.
+Use ONLY facts in the report. Never add numbers, names, dates, prices, quotes or claims that are not in it. Keep figures exactly as given.
+${PAGE_RULES}
+Return JSON: {"caption":"80 to 150 words: what happened, why it matters to ordinary Kenyans, and a closing question","headline":"poster headline, at most 8 words","sub":"poster line, at most 14 words"}`,
+      `Source: ${it.source}\nTitle: ${it.title}\nReport: ${it.text}`);
+    const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
+    if (caption.length < 200 || !ok(caption + ' ' + headline + ' ' + sub) || /https?:\/\/|www\./i.test(caption)) continue;
+    const check = await gemini('You are a strict fact checker. Compare the post with the report. List every number, name, date or claim in the post (or on its poster lines) that the report does not support. Return JSON: {"unsupported": ["..."]}',
+      `REPORT:\n${it.text}\n\nPOST:\n${headline}\n${sub}\n${caption}`);
+    if ((check.unsupported || []).length) { console.log('news: a draft failed the fact check, writing again'); continue; }
+    return { kind: 'news', ref: 'news:' + sha(it.link), headline, sub: `Source: ${it.source}`, caption: caption + `\n\nSource: ${it.source}`,
+      comment: `More Kenyan tech and money stories, and a community where you can share your own: ${SITE}/community/`, link: SITE + '/community/', alsoRef: 'news:' + sha(it.title.toLowerCase()) };
+  }
+  return null;
+}
+
+async function leastUsed(kind, topics) {
+  const rows = await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.${kind}&select=ref,created_at&order=created_at.desc&limit=200`);
+  const seen = new Map(rows.map((r) => [r.ref, Date.parse(r.created_at)]));
+  const fresh = topics.filter((t) => !seen.has(`${kind}:${t}`));
+  return fresh.length ? fresh[Math.floor(Math.random() * fresh.length)] : topics.slice().sort((a, b) => seen.get(`${kind}:${a}`) - seen.get(`${kind}:${b}`))[0];
+}
+
+async function planTip() {
+  const topic = await leastUsed('tip', TIP_TOPICS);
+  for (let t = 0; t < 3; t++) {
+    const w = await gemini(`You write practical tip posts for the TECH na PESA Facebook Page (technology and money for ordinary Kenyans).
+Give three to five clear, safe steps people can follow today. Never state fees, charges, interest rates, USSD codes, phone numbers, prices or statistics. No medical, legal or investment advice.
+${PAGE_RULES}
+Return JSON: {"caption":"80 to 140 words","headline":"poster headline, at most 7 words","sub":"poster line, at most 12 words"}`, `Topic: ${topic}`);
+    const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
+    if (caption.length >= 200 && ok(caption + ' ' + headline + ' ' + sub) && !/https?:\/\/|www\.|\*\d+#|ksh\s?\d|\d+\s?%/i.test(caption))
+      return { kind: 'tip', ref: 'tip:' + topic, headline, sub, caption, comment: `More practical tech and money tips for Kenyans: ${SITE}/`, link: SITE + '/' };
+  }
+  return null;
+}
+
+async function planQuestion() {
+  const topic = await leastUsed('question', QUESTION_TOPICS);
+  for (let t = 0; t < 3; t++) {
+    const w = await gemini(`You write the morning question for the TECH na PESA Facebook Page (technology and money for ordinary Kenyans). One warm, specific question people enjoy answering from their own life, with one or two short lines of context before it.
+${PAGE_RULES}
+Return JSON: {"caption":"25 to 60 words, ending with the question","headline":"the question for the poster, at most 10 words, ending with a question mark"}`, `Theme: ${topic}`);
+    const caption = clean(w.caption), headline = clean(w.headline);
+    if (caption.length >= 60 && /\?\s*$/.test(caption) && ok(caption + ' ' + headline) && !/https?:\/\//.test(caption))
+      return { kind: 'question', ref: 'question:' + topic, headline, sub: 'Good morning from TECH na PESA', caption, comment: `Real stories from Kenyans on tech and money, and this week's challenge: ${SITE}/community/`, link: SITE + '/community/' };
+  }
+  return null;
+}
+
+async function siteCaption(brief, kind) {
+  for (let t = 0; t < 3; t++) {
+    const w = await gemini(`You write Facebook posts for the TECH na PESA Page about content on the TECH na PESA website. Use only the facts given; never invent prices, prizes, dates, numbers or claims.
+${PAGE_RULES}
+Return JSON: {"caption":"50 to 110 words","headline":"poster headline, at most 7 words","sub":"poster line, at most 12 words"}`, `Kind: ${kind}\n${brief}`);
+    const caption = clean(w.caption), headline = clean(w.headline).replace(/[.!]+$/, ''), sub = clean(w.sub || '');
+    if (caption.length >= 120 && ok(caption + ' ' + headline + ' ' + sub) && !/https?:\/\/|www\./i.test(caption)) return { caption, headline, sub };
+  }
+  return null;
+}
+
+async function planChallenge() {
+  const ch = (await rest('challenge_list?phase=in.(open,voting)&order=opens_at.desc&limit=1&select=id,number,slug,title,question,brief,prize,sponsor_name,entries_close_at,voting_close_at,phase,entries'))[0];
+  if (!ch) return null;
+  const day = nowEAT().toISOString().slice(0, 10);
+  const fmt = (d) => new Date(d).toLocaleString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Nairobi' });
+  const brief = `Challenge ${String(ch.number).padStart(2, '0')}: ${ch.title}. ${ch.question || ''} ${String(ch.brief || '').slice(0, 500)} Prize: ${ch.prize || 'airtime'}. ${ch.sponsor_name ? 'Sponsored by ' + ch.sponsor_name + '.' : ''}
+Stage now: ${ch.phase === 'open' ? 'entries are open until ' + fmt(ch.entries_close_at) : 'voting is open until ' + fmt(ch.voting_close_at)}. Entries so far: ${ch.entries}. Entry and voting are free.`;
+  const w = await siteCaption(brief, ch.phase === 'open' ? 'invite people to enter the weekly challenge' : 'invite people to read the entries and vote');
+  if (!w) return null;
+  return { kind: 'challenge', ref: `challenge:${ch.id}:${day}`, ...w, comment: `${ch.phase === 'open' ? 'Enter' : 'Read the entries and vote'} here: ${SITE}/c/${ch.slug}`, link: `${SITE}/c/${ch.slug}` };
+}
+
+async function planSite() {
+  const done = new Set((await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=in.(story,listing)&status=eq.posted&select=ref`)).map((x) => x.ref));
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const story = (await rest(`community_feed?published_at=gte.${since}&challenge_id=is.null&order=like_count.desc,published_at.desc&limit=10&select=id,slug,title,body,author_name,author_county`)).find((s) => !done.has(s.id));
+  if (story) {
+    const w = await siteCaption(`A reader story published on the TECH na PESA community. Title: ${story.title}. By ${story.author_name}${story.author_county ? ' from ' + story.author_county : ''}. Story: ${String(story.body).slice(0, 900)}
+Introduce the story and its writer warmly, give a taste of it without retelling all of it, and mention that anyone can publish their own story on TECH na PESA and the best one each month wins a prize.`, 'reader story');
+    if (w) return { kind: 'story', ref: story.id, ...w, comment: `Read ${story.author_name}'s full story here: ${SITE}/s/${story.slug}`, link: `${SITE}/s/${story.slug}` };
+  }
+  const listing = (await rest('businesses?status=eq.published&share_ok=is.true&select=id,slug,name,tagline,description,town&order=published_at.desc&limit=20')).find((b) => !done.has(b.id));
+  if (listing) {
+    const w = await siteCaption(`A business just listed on the TECH na PESA directory. Name: ${listing.name}. Town: ${listing.town || 'Kenya'}. In their words: ${listing.tagline || ''} ${String(listing.description || '').slice(0, 500)}`, 'new business listing');
+    if (w) return { kind: 'listing', ref: listing.id, ...w, comment: `See ${listing.name} on TECH na PESA: ${SITE}/b/${listing.slug}`, link: `${SITE}/b/${listing.slug}` };
+  }
+  const promos = PROMOS.concat([
+    { key: 'institutions', path: '/institutions/', brief: 'TECH na PESA for institutions: schools, clinics, SACCOs and organisations get designed weekly posts they approve first, a Google Business Profile, and sponsored community challenges that put their name in front of local people. Every package starts with a free trial.' },
+    { key: 'community', path: '/community/write/', brief: 'Anyone can publish a story on the TECH na PESA community: how technology or money changed your life, a side hustle, a lesson learnt. The best story each month wins KSh 500 airtime.' }]);
+  const week = new Date(Date.now() - 10 * 86400000).toISOString();
+  const used = new Set((await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.promo&status=eq.posted&posted_at=gte.${week}&select=ref`)).map((x) => x.ref));
+  const pr = promos.find((p) => !used.has(p.key));
+  if (!pr) return null;
+  const w = await siteCaption(pr.brief, 'website feature');
+  return w ? { kind: 'promo', ref: pr.key, ...w, comment: `Find out more: ${SITE}${pr.path}`, link: SITE + pr.path } : null;
+}
+
+async function fbPhoto(pg, png, caption) {
+  const fd = new FormData();
+  fd.append('source', new Blob([png], { type: 'image/png' }), 'post.png');
+  fd.append('message', caption); fd.append('published', 'true');
+  const r = await fetch(`https://graph.facebook.com/${GV}/${FB_PAGES[PAGE_KEY].id}/photos`, { method: 'POST', headers: { Authorization: 'Bearer ' + pg.token }, body: fd, signal: AbortSignal.timeout(120000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !(j.post_id || j.id)) throw new Error('facebook ' + r.status + ' ' + mask(JSON.stringify(j)).slice(0, 200));
+  return j.post_id || `${FB_PAGES[PAGE_KEY].id}_${j.id}`;
+}
+async function fbComment(pg, postId, message) {
+  for (let i = 0; i < 3; i++) {
+    const r = await fetch(`https://graph.facebook.com/${GV}/${postId}/comments`, { method: 'POST', headers: { Authorization: 'Bearer ' + pg.token }, body: new URLSearchParams({ message }), signal: AbortSignal.timeout(60000) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.id) return j.id;
+    console.log('page: first comment attempt failed ' + r.status + ' ' + mask(JSON.stringify(j.error || {})).slice(0, 150));
+    await new Promise((res) => setTimeout(res, 8000));
+  }
+  return null;
+}
+
+async function makePost(kind) {
+  if (kind === 'question') return planQuestion();
+  if (kind === 'news') return (await planNews()) || planTip();
+  if (kind === 'tip') return planTip();
+  if (kind === 'challenge') return (await planChallenge()) || (await planSite()) || planTip();
+  return (await planSite()) || planTip();
+}
+
+async function runPage({ dry = false, only = null } = {}) {
+  if (!dry) {
+    if (PAUSED) { console.log('page: agent paused'); return; }
+    if ((await setting('social.page_plan', 'on')) !== 'on') { console.log('page: switched off'); return; }
+  }
+  const now = nowEAT(), h = now.getUTCHours(), day = now.toISOString().slice(0, 10);
+  const due = dry ? SLOTS.filter((s) => !only || s.name === only) : SLOTS.filter((s) => h >= s.hour && h < s.hour + 3);
+  const out = [];
+  for (const s of due) {
+    const slot = `${day}:${s.name}`;
+    if (!dry && (await rest(`social_shares?page_key=eq.${PAGE_KEY}&slot=eq.${encodeURIComponent(slot)}&status=in.(planned,posted)&select=id`)).length) continue;
+    const kind = s.kind === 'midday' ? MIDDAY[now.getUTCDay()] : s.kind;
+    let post;
+    try { post = await makePost(kind); } catch (e) { console.log(`page ${s.name}: writing failed ${mask(e.message)}`); }
+    if (!post) { console.log(`page ${s.name}: nothing passed the checks`); continue; }
+    const png = poster({ business: 'TECH na PESA', headline: post.headline, sub: post.sub, colours: '#0b1d3a #f4b631' });
+    if (dry) { out.push({ slot: s.name, kind: post.kind, headline: post.headline, sub: post.sub, caption: post.caption, comment: post.comment, png }); continue; }
+    const pg = await pageToken(FB_PAGES[PAGE_KEY].id);
+    if (!pg) { console.log('page: no posting key'); await telegram('TECH na PESA Page: the agent could not get the Page key, so nothing was posted. The Facebook login may need renewing.'); return; }
+    if (!FB_PAGES[PAGE_KEY].mustBeNamed.test(pg.name)) { console.log('page: not renamed to TECH na PESA yet'); if (h === 9) await telegram('TECH na PESA Page: posting is ready, but the Page is not named TECH na PESA yet on Facebook, so nothing went out.'); return; }
+    const row = (await rest('social_shares', { method: 'POST', body: JSON.stringify({ kind: post.kind, ref: post.ref, page_key: PAGE_KEY, link: post.link, caption: post.caption, slot, planned_for: new Date().toISOString() }) }))[0];
+    try {
+      const postId = await fbPhoto(pg, png, post.caption);
+      const commentId = await fbComment(pg, postId, post.comment);
+      await rest(`social_shares?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'posted', fb_post_id: postId, comment_id: commentId, posted_at: new Date().toISOString() }) });
+      if (post.alsoRef) await rest('social_shares', { method: 'POST', body: JSON.stringify({ kind: post.kind, ref: post.alsoRef, page_key: PAGE_KEY, link: post.link, status: 'skipped' }) });
+      await audit('social.page_post', 'social_share', row.id, { slot, kind: post.kind, fb_post_id: postId, link_comment: Boolean(commentId) });
+      console.log(`page ${s.name}: posted a ${post.kind}${commentId ? ' with the link comment' : ', link comment failed'}`);
+      if (!commentId) await telegram(`TECH na PESA Page: the ${s.name} post went out, but the link comment failed. Add it by hand: ${post.comment}`);
+    } catch (e) {
+      await rest(`social_shares?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'failed', error: mask(e.message).slice(0, 300) }) });
+      console.log(`page ${s.name}: failed ${mask(e.message).slice(0, 200)}`);
+      await telegram(`TECH na PESA Page: the ${s.name} post failed to publish. The agent tries again on the next hourly run.`);
+    }
+  }
+  return out;
+}
+
 async function billing() {
   try {
     const r = await rest('rpc/growth_billing_daily', { method: 'POST', body: '{}' });
@@ -291,6 +524,9 @@ async function selftest() {
   fs.writeFileSync(path.join(out, 'drafts.json'), JSON.stringify(posts, null, 1));
   const share = clean((await gemini(SHARE_SYSTEM, PROMOS[2].brief)).caption || '');
   fs.writeFileSync(path.join(out, 'share.json'), JSON.stringify({ caption: share, passes: ok(share) }, null, 1));
+  const pagePosts = await runPage({ dry: true }).catch((e) => { console.log('page dry run: ' + mask(e.message)); return []; });
+  pagePosts.forEach((p) => { fs.writeFileSync(path.join(out, `page-${p.slot}.png`), p.png); delete p.png; });
+  fs.writeFileSync(path.join(out, 'page.json'), JSON.stringify(pagePosts, null, 1));
   const key = await serviceKey().then(() => 'platform key ok').catch((e) => 'platform key: ' + mask(e.message));
   const pg = await pageToken(FB_PAGES.techpulse.id).then((p) => (p ? `page key ok, page name ${p.name}` : 'no page key')).catch(() => 'page check failed');
   fs.writeFileSync(path.join(out, 'checks.json'), JSON.stringify({ at: new Date().toISOString(), drafts: posts.length, key, page: pg }, null, 1));
@@ -303,7 +539,7 @@ if (require.main === module) (async () => {
     if (SELFTEST) return await selftest();
     if (PAUSED) console.log('agent paused: no shares; drafts still prepared for staff');
     await runJobs();
-    await runShares();
+    if ((await setting('social.page_plan', 'on').catch(() => 'on')) === 'on') await runPage(); else await runShares();
     await billing();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();
