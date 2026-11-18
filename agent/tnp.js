@@ -446,7 +446,7 @@ Introduce the story and its writer warmly, give a taste of it without retelling 
   }
   const promos = PROMOS.concat([
     { key: 'institutions', path: '/institutions/', brief: 'TECH na PESA for institutions: schools, clinics, SACCOs and organisations get designed weekly posts they approve first, a Google Business Profile, and sponsored community challenges that put their name in front of local people. Every package starts with a free trial.' },
-    { key: 'community', path: '/community/write/', brief: 'Anyone can publish a story on the TECH na PESA community: how technology or money changed your life, a side hustle, a lesson learnt. The best story each month wins KSh 500 airtime.' }]);
+    { key: 'community', path: '/vibe/', brief: 'TnPVibe is the free TECH na PESA community for adults: make friends, follow people, join communities, chat in private and earn points for airtime. Creating an account is free and takes a minute; nobody has to post anything.' }]);
   const week = new Date(Date.now() - 10 * 86400000).toISOString();
   const used = new Set((await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.promo&status=eq.posted&posted_at=gte.${week}&select=ref`)).map((x) => x.ref));
   const pr = promos.find((p) => !used.has(p.key));
