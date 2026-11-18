@@ -603,6 +603,11 @@ async function staffAlerts() {   // anything the site could not send straight aw
   } catch (e) { console.log('alerts: ' + mask(e.message)); }
 }
 
+async function vibeHourly() {   // TnPVibe: event reminders a day ahead, clearing expired stories
+  try { const r = await rest('rpc/vibe_hourly', { method: 'POST', body: '{}' }); if (r.reminded_events || r.stories_cleared) console.log(`vibe: ${r.reminded_events} event reminders, ${r.stories_cleared} old stories cleared`); }
+  catch (e) { console.log('vibe: ' + mask(e.message)); }
+}
+
 async function billing() {
   try {
     const r = await rest('rpc/growth_billing_daily', { method: 'POST', body: '{}' });
@@ -638,6 +643,7 @@ if (require.main === module) (async () => {
     if ((await setting('social.page_plan', 'on').catch(() => 'on')) === 'on') await runPage(); else await runShares();
     await staffAlerts();
     await billing();
+    await vibeHourly();
     await whatsappSend();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();

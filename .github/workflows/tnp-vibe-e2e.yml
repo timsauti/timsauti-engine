@@ -39,6 +39,7 @@ jobs:
           run = str(int(time.time()))[-6:]
           users = {}
           uploaded = []
+          made = []
           passed, failed = 0, []
           def check(cond, what):
               global passed
@@ -131,7 +132,44 @@ jobs:
               check(ok('c', 'admin_vibe_report_decide', {'p_report': mine[0]['id'], 'p_action': 'remove', 'p_note': 'live test'})[0], 'the moderator removes the post')
               s, p = call('b', 'vibe_post', {'p_id': pid}); check(p is None, 'the removed post is hidden')
               s, st = call('c', 'admin_vibe_stats'); check(s == 200 and st['members'] >= 3, 'moderation statistics load')
+              # phase 2: communities
+              s, com = call('a', 'vibe_community_save', {'p': {'name': f'Test Room {run}', 'category': 'technology', 'visibility': 'private'}}); check(s == 200 and com['my_role'] == 'owner', 'A creates a private community')
+              made.append(('community', com['id']))
+              s, j = call('b', 'vibe_community_join', {'p_slug': com['slug'], 'p_on': True}); check(j['my_status'] == 'pending', 'B asks to join the private community')
+              check(call('b', 'vibe_post_save', {'p_id': None, 'p_kind': 'post', 'p_body': 'early', 'p_community': com['id']})[0] >= 400, 'B cannot post before approval')
+              check(ok('a', 'vibe_community_member', {'p_comm': com['id'], 'p_user': B, 'p_action': 'approve'})[0], 'A approves B')
+              check(ok('b', 'vibe_post_save', {'p_id': None, 'p_kind': 'post', 'p_body': 'Hello room', 'p_community': com['id']})[0], 'B posts in the community')
+              s, f = call('c', 'vibe_feed', {'p_scope': 'community:' + com['slug']}); check(f == [], 'an outsider cannot read the private community')
+              # circles
+              s, cid = call('a', 'vibe_circle_create', {'p_name': 'Test circle', 'p_purpose': 'project'}); check(s == 200, 'A creates a circle')
+              check(ok('a', 'vibe_circle_invite', {'p_circle': cid, 'p_user': B})[0], 'A invites B to the circle')
+              check(ok('b', 'vibe_circle_respond', {'p_circle': cid, 'p_accept': True})[0], 'B accepts the invitation')
+              s, ci = call('b', 'vibe_circle', {'p_id': cid}); check(ci and ci['conversation_id'], 'B sees the circle chat')
+              check(ok('b', 'vibe_message_send', {'p_conv': ci['conversation_id'], 'p_kind': 'text', 'p_body': 'hello circle'})[0], 'B writes in the circle chat')
+              check(call('c', 'vibe_message_send', {'p_conv': ci['conversation_id'], 'p_kind': 'text', 'p_body': 'intruder'})[0] >= 400, 'an outsider cannot write in the circle')
+              # stories
+              call('b', 'vibe_follow', {'p_user': A, 'p_on': True})
+              s, sid = call('a', 'vibe_story_add', {'p_media': None, 'p_body': 'Live test story', 'p_background': 'green'}); check(s == 200, 'A adds a story')
+              s, bar = call('b', 'vibe_stories_bar'); check(any(x['id'] == A for x in bar), 'B sees the story in the stories bar')
+              s, st2 = call('b', 'vibe_stories_of', {'p_user': A}); check(len(st2) == 1, 'B opens the story')
+              s, vw = call('a', 'vibe_story_viewers', {'p_story': sid}); check(len(vw) == 1, 'A sees that B viewed it')
+              # polls
+              s, poll = call('a', 'vibe_post_save', {'p_id': None, 'p_kind': 'poll', 'p_body': 'Test poll question', 'p_poll': {'options': ['Yes', 'No'], 'days': 1}}); check(s == 200, 'A creates a poll')
+              s, pr = call('b', 'vibe_poll_vote', {'p_post': poll['id'], 'p_options': [poll['poll']['options'][0]['id']]}); check(s == 200 and pr['total'] == 1, 'B votes in the poll')
+              # events
+              import datetime
+              start = (datetime.datetime.utcnow() + datetime.timedelta(days=3)).isoformat() + 'Z'
+              s, ev = call('a', 'vibe_event_save', {'p': {'title': 'Live test webinar', 'mode': 'online', 'online_link': 'https://meet.example/x', 'starts_at': start}}); check(s == 200, 'A creates an event')
+              s, e2 = call('b', 'vibe_event', {'p_id': ev['id']}); check(e2['online_link'] is None, 'the joining link is hidden before RSVP')
+              s, e3 = call('b', 'vibe_event_rsvp', {'p_id': ev['id'], 'p_status': 'going'}); check(e3['online_link'] == 'https://meet.example/x' and e3['going'] == 2, 'B says going and sees the link')
+              # questions and points
+              s, q = call('b', 'vibe_post_save', {'p_id': None, 'p_kind': 'question', 'p_body': 'Live test question?', 'p_category': 'Other'}); check(s == 200, 'B asks a question')
+              s, an = call('a', 'vibe_comment_add', {'p_post': q['id'], 'p_body': 'Live test answer'}); check(s == 200, 'A answers')
+              check(ok('b', 'vibe_accept_answer', {'p_post': q['id'], 'p_comment': an['id']})[0], 'B marks the helpful answer')
+              s, bal = call('a', 'points_balance'); check(isinstance(bal, int) and bal >= 10, f'A earned points for taking part ({bal})')
           finally:
+              for kind, mid in made:
+                  if kind == 'community': sql(f'delete from public.vibe_communities where id = {int(mid)}')
               for b, path in uploaded:
                   http('DELETE', f'{URL}/storage/v1/object/{b}', {'prefixes': [path]}, admin)
               for k, u in users.items():
