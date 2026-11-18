@@ -14,9 +14,10 @@ reset role;
 insert into public.challenges (number, slug, title, question, answer_max, brief, prize, opens_at, entries_close_at, voting_close_at, published)
 values (9, '09', 'Test question challenge', 'What would you do with KSh 1,000 and a phone?', 300, 'Answer one simple question in a few sentences.', 'KSh 500 airtime',
         now() - interval '1 hour', now() + interval '6 days', now() + interval '6 days', true);
+update public.profiles set phone = '+254700000000' where phone is null;  -- challenge entrants need an M-PESA number
 set role anon; select set_config('request.jwt.claims', '{"role":"anon"}', false);
 select pg_temp.expect((select question from public.challenge_list where slug = '09') like 'What would you do%', 'the public list shows the question');
-select pg_temp.expect((select sponsor_name from public.challenge_list where slug = '01') = 'Kyandu Bright School', 'challenge 01 is sponsored by Kyandu Bright School');
+select pg_temp.expect((select sponsor_name from public.challenge_list where slug = '01') = 'Kyandu Bright Academy', 'challenge 01 is sponsored by Kyandu Bright Academy');
 reset role;
 set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
 select public.story_save(null, '', 'Buy airtime in bulk and resell it to neighbours.', 'hustle', null, null, (select id from public.challenge_list where slug = '09'));

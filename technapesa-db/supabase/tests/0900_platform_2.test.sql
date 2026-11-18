@@ -9,6 +9,7 @@ begin
   begin execute sql; exception when others then raise notice 'ok: %', what; return; end;
   raise exception 'FAILED: %', what;
 end $$;
+delete from public.articles where origin_ref like 'seed:%';  -- start from an empty desk
 insert into public.articles (slug, title, dek, body, category, origin, origin_ref) values
   ('keep-your-mpesa-pin-safe', 'Keep your M-PESA PIN safe', 'Five habits that protect your money', repeat('Never share your PIN with anyone, even a caller who says they are from Safaricom. ', 3), 'mpesa', 'agent', 'tip:pin'),
   ('hidden-draft', 'A hidden draft article', '', repeat('Draft words for testing only. ', 6), 'technology', 'staff', null);
