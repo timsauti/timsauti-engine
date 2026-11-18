@@ -1,0 +1,56 @@
+name: TECH na PESA TnPVibe photos to JPG
+# One-off tidy up: TnPVibe photos uploaded as WebP are copied to JPG (which every app's link preview shows)
+# and the profiles, posts, stories, communities and events are pointed at the JPG copies. Safe to run again.
+on:
+  workflow_dispatch:
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc
+jobs:
+  convert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Convert
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          pip install --quiet pillow
+          python3 - <<'PY'
+          import io, json, os, urllib.request, urllib.error
+          from PIL import Image
+          REF = os.environ['PROJECT_REF']; URL = f'https://{REF}.supabase.co'
+          mgmt = {'Authorization': 'Bearer ' + os.environ['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'}
+          def http(method, url, body=None, headers=None, raw=False):
+              data = body if isinstance(body, (bytes, type(None))) else json.dumps(body).encode()
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers or {}, method=method)); t = r.read()
+                  return r.status, (t if raw else (json.loads(t) if t else None))
+              except urllib.error.HTTPError as e: return e.code, e.read()[:300]
+          _, keys = http('GET', f'https://api.supabase.com/v1/projects/{REF}/api-keys?reveal=true', headers=mgmt)
+          svc = next(k['api_key'] for k in keys if k['name'] == 'service_role'); print(f'::add-mask::{svc}')
+          admin = {'apikey': svc, 'Authorization': 'Bearer ' + svc, 'Content-Type': 'application/json'}
+          def sql(q):
+              s, r = http('POST', f'https://api.supabase.com/v1/projects/{REF}/database/query', {'query': q}, mgmt)
+              if s >= 300: raise SystemExit(f'sql failed: {r}')
+              return r
+          rows = sql("select name from storage.objects where bucket_id = 'vibe-media' and name like '%.webp'")
+          done = []
+          for r in rows:
+              path = r['name']; jpg = path[:-5] + '.jpg'
+              s, data = http('GET', f'{URL}/storage/v1/object/vibe-media/{path}', None, {'apikey': svc, 'Authorization': 'Bearer ' + svc}, raw=True)
+              if s != 200: print('could not read', path); continue
+              im = Image.open(io.BytesIO(data)).convert('RGB'); out = io.BytesIO(); im.save(out, 'JPEG', quality=85, optimize=True)
+              s, _ = http('POST', f'{URL}/storage/v1/object/vibe-media/{jpg}', out.getvalue(), {'apikey': svc, 'Authorization': 'Bearer ' + svc, 'Content-Type': 'image/jpeg', 'x-upsert': 'true'})
+              if s < 300: done.append(path); print('converted', path.split('/')[-1], f'{len(data)//1024} KB webp to {len(out.getvalue())//1024} KB jpg')
+              else: print('could not save', path)
+          if done:
+              lst = ','.join("'" + p.replace("'", "''") + "'" for p in done)
+              sql(f"""
+                update public.vibe_profiles set avatar_path = regexp_replace(avatar_path, '\\.webp$', '.jpg') where avatar_path in ({lst});
+                update public.vibe_profiles set cover_path = regexp_replace(cover_path, '\\.webp$', '.jpg') where cover_path in ({lst});
+                update public.vibe_posts set media = array(select case when x in ({lst}) then regexp_replace(x, '\\.webp$', '.jpg') else x end from unnest(media) x) where media && array[{lst}]::text[];
+                update public.vibe_stories set media_path = regexp_replace(media_path, '\\.webp$', '.jpg') where media_path in ({lst});
+                update public.vibe_communities set cover_path = regexp_replace(cover_path, '\\.webp$', '.jpg') where cover_path in ({lst});
+                update public.vibe_events set cover_path = regexp_replace(cover_path, '\\.webp$', '.jpg') where cover_path in ({lst});""")
+          print(f'{len(done)} of {len(rows)} photos now JPG')
+          PY
