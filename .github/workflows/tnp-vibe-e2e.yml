@@ -1,0 +1,143 @@
+name: TECH na PESA TnPVibe live test
+# Runs the TnPVibe member journeys against the live site's database with three throwaway accounts, then deletes them.
+# The accounts use made up addresses on the technapesa.co.ke domain and are created already confirmed, so no email is sent.
+# Keys and passwords are generated or fetched at run time and masked; nothing personal is stored in this public repository.
+on:
+  workflow_dispatch:
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Run the TnPVibe journeys
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, secrets, time, urllib.request, urllib.error
+          REF = os.environ['PROJECT_REF']; URL = f'https://{REF}.supabase.co'
+          def http(method, url, body=None, headers=None, raw=False):
+              data = body if isinstance(body, (bytes, type(None))) else json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+              try:
+                  r = urllib.request.urlopen(req); t = r.read(); return r.status, (t if raw else (json.loads(t) if t else None))
+              except urllib.error.HTTPError as e:
+                  t = e.read();
+                  try: return e.code, json.loads(t)
+                  except Exception: return e.code, t.decode()[:300]
+          mgmt = {'Authorization': 'Bearer ' + os.environ['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'}
+          _, keys = http('GET', f'https://api.supabase.com/v1/projects/{REF}/api-keys?reveal=true', headers=mgmt)
+          anon = next(k['api_key'] for k in keys if k['name'] == 'anon'); svc = next(k['api_key'] for k in keys if k['name'] == 'service_role')
+          print(f'::add-mask::{anon}'); print(f'::add-mask::{svc}')
+          def sql(q):
+              s, r = http('POST', f'https://api.supabase.com/v1/projects/{REF}/database/query', {'query': q}, mgmt)
+              if s >= 300: raise SystemExit(f'sql failed: {r}')
+              return r
+          admin = {'apikey': svc, 'Authorization': 'Bearer ' + svc, 'Content-Type': 'application/json'}
+          run = str(int(time.time()))[-6:]
+          users = {}
+          uploaded = []
+          passed, failed = 0, []
+          def check(cond, what):
+              global passed
+              if cond: passed += 1; print('PASS', what)
+              else: failed.append(what); print('FAIL', what)
+          try:
+              for k, name in (('a', 'Test Amina'), ('b', 'Test Brian'), ('c', 'Test Moderator')):
+                  pw = secrets.token_urlsafe(18); print(f'::add-mask::{pw}')
+                  email = f'vibe-test-{k}-{run}@technapesa.co.ke'
+                  s, u = http('POST', f'{URL}/auth/v1/admin/users', {'email': email, 'password': pw, 'email_confirm': True, 'user_metadata': {'full_name': name, 'accepted_terms': True, 'phone': '0700000000'}}, admin)
+                  if s >= 300: raise SystemExit(f'could not create test account: {u}')
+                  s, t = http('POST', f'{URL}/auth/v1/token?grant_type=password', {'email': email, 'password': pw}, {'apikey': anon, 'Content-Type': 'application/json'})
+                  check(s == 200, f'test member {k} can log in')
+                  print(f"::add-mask::{t['access_token']}")
+                  users[k] = {'id': u['id'], 'tok': t['access_token']}
+              def call(k, fn, args=None):
+                  h = {'apikey': anon, 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (users[k]['tok'] if k else anon)}
+                  return http('POST', f'{URL}/rest/v1/rpc/{fn}', args or {}, h)
+              def ok(k, fn, args=None):
+                  s, r = call(k, fn, args)
+                  if s >= 300: print('   error from', fn, r)
+                  return s < 300, r
+              A, B = users['a']['id'], users['b']['id']
+              # join and profile
+              check(call('a', 'vibe_join', {'p_username': f'tst_a{run}', 'p_adult': False})[0] >= 400, 'joining without the 18+ confirmation is refused')
+              check(ok('a', 'vibe_join', {'p_username': f'tst_a{run}', 'p_adult': True, 'p_headline': 'Tester', 'p_interests': ['Technology', 'Farming']})[0], 'member A joins TnPVibe')
+              check(ok('b', 'vibe_join', {'p_username': f'tst_b{run}', 'p_adult': True, 'p_interests': ['Farming']})[0], 'member B joins TnPVibe')
+              check(ok('c', 'vibe_join', {'p_username': f'tst_c{run}', 'p_adult': True})[0], 'member C joins TnPVibe')
+              # photo upload into own folder and into someone else's folder
+              img = bytes.fromhex('524946461a000000574542505650384c0d0000002f0000001007101111888808')
+              s, _ = http('POST', f"{URL}/storage/v1/object/vibe-media/{A}/avatar-{run}.webp", img, {'apikey': anon, 'Authorization': 'Bearer ' + users['a']['tok'], 'Content-Type': 'image/webp'})
+              check(s < 300, 'member A uploads a profile photo'); uploaded.append(('vibe-media', f'{A}/avatar-{run}.webp'))
+              s, _ = http('POST', f"{URL}/storage/v1/object/vibe-media/{B}/sneaky-{run}.webp", img, {'apikey': anon, 'Authorization': 'Bearer ' + users['a']['tok'], 'Content-Type': 'image/webp'})
+              check(s >= 400, "member A cannot upload into member B's folder")
+              s, _ = http('POST', f"{URL}/storage/v1/object/vibe-media/{A}/bad-{run}.html", b'<script>x</script>', {'apikey': anon, 'Authorization': 'Bearer ' + users['a']['tok'], 'Content-Type': 'text/html'})
+              check(s >= 400, 'a web page cannot be uploaded as a photo')
+              check(ok('a', 'vibe_profile_save', {'p': {'name': 'Test Amina W', 'bio': 'Testing TnPVibe', 'skills': ['Web design'], 'avatar_path': f'{A}/avatar-{run}.webp'}})[0], 'member A edits the profile and sets the photo')
+              s, p = call(None, 'vibe_profile', {'p_username': f'tst_a{run}'})
+              check(s == 200 and p and p['name'] == 'Test Amina W' and 'phone' not in p, 'a visitor sees the public profile without private details')
+              # follows
+              s, c = call('b', 'vibe_follow', {'p_user': A, 'p_on': True}); check(s == 200 and c['following_them'], 'B follows A')
+              call('b', 'vibe_follow', {'p_user': A, 'p_on': True})
+              s, p = call('a', 'vibe_profile', {'p_username': f'tst_a{run}'}); check(p['followers'] == 1, 'A has exactly one follower after a double follow')
+              check(call('b', 'vibe_follow', {'p_user': B, 'p_on': True})[0] >= 400, 'nobody can follow themselves')
+              # presence
+              ok('a', 'vibe_heartbeat'); s, p = call('b', 'vibe_profile', {'p_username': f'tst_a{run}'}); check(p['online'] is True, 'A shows as online after activity')
+              ok('a', 'vibe_privacy_save', {'p': {'show_online': False}}); s, p = call('b', 'vibe_profile', {'p_username': f'tst_a{run}'}); check(p['online'] is False and p['last_active'] is None, 'A can hide online status')
+              ok('a', 'vibe_privacy_save', {'p': {'show_online': True}})
+              # posts, likes, comments
+              s, post = call('a', 'vibe_post_save', {'p_id': None, 'p_kind': 'idea', 'p_body': 'Live test post, please ignore', 'p_media': [f'{A}/avatar-{run}.webp']}); check(s == 200, 'A publishes a photo post')
+              pid = post['id']
+              s, feed = call('b', 'vibe_feed', {'p_scope': 'following'}); check(any(x['id'] == pid for x in feed), "the post appears in B's following feed")
+              s, r = call('b', 'vibe_like', {'p_post': pid, 'p_on': True}); check(r['likes'] == 1, 'B likes the post')
+              s, r = call('b', 'vibe_like', {'p_post': pid, 'p_on': False}); check(r['likes'] == 0, 'B unlikes the post')
+              s, cm = call('b', 'vibe_comment_add', {'p_post': pid, 'p_body': 'Nice idea'}); check(s == 200, 'B comments')
+              s, rp = call('a', 'vibe_comment_add', {'p_post': pid, 'p_body': 'Thanks', 'p_parent': cm['id']}); check(s == 200, 'A replies to the comment')
+              s, lst = call(None, 'vibe_comments_list', {'p_post': pid}); check(len(lst) == 2, 'the comment and reply are listed')
+              check(call('b', 'vibe_post_delete', {'p_id': pid})[0] >= 400, "B cannot delete A's post")
+              # notifications
+              h = {'apikey': anon, 'Authorization': 'Bearer ' + users['a']['tok']}
+              s, n = http('GET', f'{URL}/rest/v1/notifications?select=topic,title&topic=eq.social', None, h)
+              check(len(n) >= 2, 'A was notified of the new follower and the comment')
+              # messages with attachments
+              s, conv = call('b', 'vibe_conversation_open', {'p_user': A}); check(s == 200, 'B opens a conversation with A')
+              check(ok('b', 'vibe_message_send', {'p_conv': conv, 'p_kind': 'text', 'p_body': 'Hello from the live test'})[0], 'B sends a message')
+              voice = b'\x1aE\xdf\xa3' + b'\x00' * 64
+              s, _ = http('POST', f"{URL}/storage/v1/object/vibe-private/{conv}/{B}/voice-{run}.webm", voice, {'apikey': anon, 'Authorization': 'Bearer ' + users['b']['tok'], 'Content-Type': 'audio/webm'})
+              check(s < 300, 'B uploads a voice note into the conversation'); uploaded.append(('vibe-private', f'{conv}/{B}/voice-{run}.webm'))
+              check(ok('b', 'vibe_message_send', {'p_conv': conv, 'p_kind': 'voice', 'p_body': '', 'p_attachment': f'{conv}/{B}/voice-{run}.webm', 'p_duration': 3})[0], 'B sends the voice note')
+              s, me = call('a', 'vibe_whoami'); check(me['unread_messages'] == 2, 'A sees two unread messages')
+              s, sig = http('POST', f"{URL}/storage/v1/object/sign/vibe-private/{conv}/{B}/voice-{run}.webm", {'expiresIn': 60}, {'apikey': anon, 'Authorization': 'Bearer ' + users['a']['tok'], 'Content-Type': 'application/json'})
+              check(s == 200, 'A can open the voice note')
+              s, sig = http('POST', f"{URL}/storage/v1/object/sign/vibe-private/{conv}/{B}/voice-{run}.webm", {'expiresIn': 60}, {'apikey': anon, 'Authorization': 'Bearer ' + users['c']['tok'], 'Content-Type': 'application/json'})
+              check(s >= 400, 'an outsider cannot open the voice note')
+              check(call('c', 'vibe_messages_list', {'p_conv': conv})[0] >= 400, 'an outsider cannot read the conversation')
+              s, rows = http('GET', f'{URL}/rest/v1/vibe_messages?select=id&conversation_id=eq.{conv}', None, {'apikey': anon, 'Authorization': 'Bearer ' + users['c']['tok']})
+              check(s == 200 and rows == [], 'the messages table shows nothing to an outsider')
+              ok('a', 'vibe_conversation_read', {'p_conv': conv}); s, me = call('a', 'vibe_whoami'); check(me['unread_messages'] == 0, 'reading clears the unread count')
+              # block
+              ok('a', 'vibe_block', {'p_user': B, 'p_on': True})
+              check(call('b', 'vibe_message_send', {'p_conv': conv, 'p_kind': 'text', 'p_body': 'still there?'})[0] >= 400, 'a blocked member cannot message')
+              s, p = call('b', 'vibe_profile', {'p_username': f'tst_a{run}'}); check(p is None, 'a blocked member cannot see the profile')
+              ok('a', 'vibe_block', {'p_user': B, 'p_on': False})
+              # report and moderation
+              check(ok('b', 'vibe_report', {'p_type': 'post', 'p_id': str(pid), 'p_reason': 'spam', 'p_details': 'live test'})[0], 'B reports the post')
+              check(call('b', 'admin_vibe_reports')[0] >= 400, 'members cannot open the reports queue')
+              sql(f"insert into public.user_roles (user_id, role) values ('{users['c']['id']}', 'moderator') on conflict do nothing")
+              s, reps = call('c', 'admin_vibe_reports'); mine = [r for r in reps if r['target_id'] == str(pid)]
+              check(len(mine) == 1, 'a moderator sees the report')
+              check(ok('c', 'admin_vibe_report_decide', {'p_report': mine[0]['id'], 'p_action': 'remove', 'p_note': 'live test'})[0], 'the moderator removes the post')
+              s, p = call('b', 'vibe_post', {'p_id': pid}); check(p is None, 'the removed post is hidden')
+              s, st = call('c', 'admin_vibe_stats'); check(s == 200 and st['members'] >= 3, 'moderation statistics load')
+          finally:
+              for b, path in uploaded:
+                  http('DELETE', f'{URL}/storage/v1/object/{b}', {'prefixes': [path]}, admin)
+              for k, u in users.items():
+                  http('DELETE', f"{URL}/auth/v1/admin/users/{u['id']}", None, admin)
+              left = sql(f"select count(*) n from auth.users where email like 'vibe-test-%-{run}@technapesa.co.ke'")
+              print('test accounts removed' if left and left[0]['n'] == 0 else f'cleanup left accounts: {left}')
+          print(f'\n{passed} passed, {len(failed)} failed')
+          if failed: raise SystemExit('failed: ' + '; '.join(failed))
+          PY
