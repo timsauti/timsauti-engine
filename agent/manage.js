@@ -65,10 +65,12 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
       }
       const body = new URLSearchParams(); body.append('message', p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' '));
       ids.forEach((id, i) => body.append(`attached_media[${i}]`, JSON.stringify({ media_fbid: id })));
+      const atX = p.bookAt ? Date.parse(p.bookAt) : 0;   // owner, 18 Nov: multi photo posts can be booked for a set time too
+      if (atX > Date.now() + 15 * 60000) { body.append('published', 'false'); body.append('scheduled_publish_time', String(Math.floor(atX / 1000))); }
       const r = await fetch(`https://graph.facebook.com/${GV}/${page.pageId}/feed`, { method: 'POST', headers: auth, body, signal: AbortSignal.timeout(120000) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.id) { p.status = 'FAILED'; p.error = mask(JSON.stringify(j)).slice(0, 300); console.log('Failed: ' + p.error); fs.writeFileSync(file, JSON.stringify(posts, null, 1)); process.exit(1); }
-      p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { postId: j.id, photoId: ids[0] }; p.permalink = 'https://www.facebook.com/' + j.id.replace('_', '/posts/');
+      p.status = 'PUBLISHED'; p.publishedAt = atX > Date.now() + 15 * 60000 ? new Date(atX).toISOString() : new Date().toISOString(); if (atX > Date.now()) p.bookedOnFacebook = true; p.fb = { postId: j.id, photoId: ids[0] }; p.permalink = 'https://www.facebook.com/' + j.id.replace('_', '/posts/');
       p.permalink = (await officialLink(p.fb.postId)) || p.permalink;   // owner, 17 Nov: Facebook's own link opens on his phone
       fs.writeFileSync(file, JSON.stringify(posts, null, 1)); audit({ event: 'published_by_owner_request', id: p.id, fb: p.fb });
       console.log('Published: ' + p.permalink); return;
