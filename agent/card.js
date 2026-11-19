@@ -351,9 +351,7 @@ function sautiCard(spec) {
   const brand = `<rect x="70" y="${H - 150}" width="8" height="74" fill="${red}"/><text x="98" y="${H - 116}" font-family="Poppins" font-size="38" font-weight="700" fill="${textCol}">Sauti Media</text><text x="98" y="${H - 80}" font-family="Poppins" font-size="27" font-weight="500" fill="${red}">#sautimedia</text>`;
   return toPng(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${back}${brk && bg ? `<rect width="${W}" height="${H}" fill="#000" fill-opacity="0.45"/>` : ''}${logo}
 ${brk ? `<rect x="0" y="${ly}" width="${W}" height="136" fill="${red}"/><rect x="0" y="${ly + 136}" width="${W}" height="8" fill="${white}"/><text x="${W / 2}" y="${ly + 106}" text-anchor="middle" font-family="Anton" font-size="104" letter-spacing="6" fill="${white}">BREAKING NEWS</text>` : `<rect x="70" y="${ly}" width="${lw}" height="56" rx="8" fill="${red}"/><text x="${70 + lw / 2}" y="${ly + 38}" text-anchor="middle" font-family="Poppins" font-size="30" font-weight="700" letter-spacing="2" fill="${white}">${esc(label)}</text>`}
-${lines}${sub}${brand}${bg && spec.credit ? (/^Photo: /.test(spec.credit)
-    ? `<text x="${W - 26}" y="${H - 24}" text-anchor="end" font-family="Poppins" font-size="19" font-weight="500" fill="#ffffff" fill-opacity="0.78">${esc(String(spec.credit).slice(0, 60))}</text>`   // a news outlet's photo: small but readable
-    : `<text x="${W - 22}" y="${H - 18}" text-anchor="end" font-family="Poppins" font-size="14" fill="#ffffff" fill-opacity="0.38">${esc(String(spec.credit).slice(0, 70))}</text>`) : ''}</svg>`);
+${lines}${sub}${brand}${bg && spec.credit ? creditMark(spec.credit, String(spec.text || '') + String(spec.credit), W, H) : ''}</svg>`);
 }
 // Thread poster ("9 LESSONS ..."): a real photo with a bold serif title on top and a dark fade, the style of viral lesson threads
 function threadCard(spec) {
@@ -383,6 +381,16 @@ function workCard(spec) {
   const logo = fs.existsSync(logoF) ? `<image href="data:image/png;base64,${fs.readFileSync(logoF).toString('base64')}" x="50" y="${H - band + 25}" width="330" height="140" preserveAspectRatio="xMinYMid meet"/>` : '';
   return toPng(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#ffffff"/>${bg ? imgTag(bg, 0, 0, W, H - band) : ''}<rect x="0" y="${H - band}" width="${W}" height="${band}" fill="#ffffff"/><rect x="0" y="${H - band}" width="${W}" height="8" fill="#d7261e"/>${logo}
 <text x="${W - 50}" y="${H - band + 85}" text-anchor="end" font-family="Poppins" font-size="30" font-weight="700" fill="#0b1f4d">OUR WORK</text><text x="${W - 50}" y="${H - band + 132}" text-anchor="end" font-family="Poppins" font-size="30" font-weight="600" fill="#d7261e">0733 566 667  |  0728 245 824</text></svg>`);
+}
+
+// owner, 19 Nov: a credit for a photo from Tuko, Capital FM and the like is very small and faint, and its place on the poster
+// changes from post to post (top left, under the logo, bottom right, bottom left under the brand line)
+function creditMark(credit, seed, W, H) {
+  let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const spots = [[22, 30, 'start'], [W - 22, 268, 'end'], [W - 22, H - 16, 'end'], [22, H - 16, 'start']];
+  const [x, y, a] = spots[h % spots.length];
+  const t = String(credit).replace(/^Photo:\s*/i, '').slice(0, 40);
+  return `<text x="${x}" y="${y}" text-anchor="${a}" font-family="Poppins" font-size="12" fill="#ffffff" fill-opacity="0.42">${esc(t)}</text>`;
 }
 module.exports = { threadCard, workCard, renderCard, photoFrame, sautiCard, LAYOUTS: Object.keys(LAYOUTS) };
 

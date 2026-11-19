@@ -421,10 +421,20 @@ async function sautiNewsNow(page, posts, notes) {
       const pl = await SAUTI.placePhoto(post.headline, post.caption, gemini, path.join(ROOT, 'data', 'sauti'), avoid).catch(() => null);
       if (pl) { post.sauti.photo = path.relative(ROOT, pl.file); post.sauti.credit = pl.credit || ''; post.sauti.wide = pl.wide || null; if (!post.sauti.sub && pl.place) post.sauti.sub = pl.place; post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); if (qc.pass) audit('sauti', { event: 'place_photo_used', id: post.id, place: pl.place }); }
     }
+    // owner, 19 Nov: plain designed posters with no photo "are not appealing and are not selling", so they are not used any more.
+    // 4) a photo of the story's THEME (the thing or scene it is about: a jiko, a forest, a classroom, a matatu), close even if not exact.
     if (!qc.pass && onlyPhotoFit(qc.problems)) {
-      const pl = SAUTI.placePhoto.lastPlace || '';
-      post.sauti.photo = null; post.sauti.credit = ''; post.sauti.wide = null; post.sauti.designed = true; if (!post.sauti.sub && pl) post.sauti.sub = pl;
-      post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post)); if (qc.pass) audit('sauti', { event: 'designed_poster_used', id: post.id });
+      let terms = [];
+      try { const t = await gemini({ system: 'You help a Kenyan news desk find photos. Output only JSON.', user: `Story headline: "${post.headline}". Story: "${String(post.caption || '').slice(0, 600)}".\nGive three Wikimedia Commons search phrases for a photo of the THEME of this story: the main object, activity or scene (for example "energy saving cookstove Kenya", "Mount Kenya forest", "Kenyan classroom pupils"). Prefer Kenya or East Africa. Never a named person, never a dead or injured person. Return JSON {"terms":["...","...","..."]}` }); terms = (t && t.terms) || []; } catch (e) {}
+      for (const term of terms.slice(0, 3)) {
+        const tp = await SAUTI.commonsPhoto(String(term), path.join(ROOT, 'data', 'sauti'), gemini, post.headline).catch(() => null);
+        if (!tp || (post.sauti.avoid || []).includes(path.basename(tp.file))) continue;
+        post.sauti.photo = path.relative(ROOT, tp.file); post.sauti.credit = tp.credit || ''; post.sauti.wide = tp.wide || null; post.sauti.designed = false;
+        post.image = design(page, post, posts); save(page.key, posts); Object.assign(qc, await finalCheck(page, post));
+        if (qc.pass) { audit('sauti', { event: 'theme_photo_used', id: post.id, term }); break; }
+        post.sauti.avoid = (post.sauti.avoid || []).concat(path.basename(tp.file));
+      }
+      if (!qc.pass) await telegram(`SAUTI: no fitting photo found yet for "${post.headline}". It is held; send a photo for it if you want it out.`).catch(() => {});
     }
     if (!qc.pass) { post.status = 'REJECTED_QC'; post.qc = qc.problems; audit('sauti', { event: 'rejected_by_final_check', id: post.id, problems: qc.problems }); save(page.key, posts); if (++rejects <= 6) i--; continue; }
     try {
