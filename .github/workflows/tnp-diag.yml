@@ -1,0 +1,15 @@
+name: TECH na PESA sign up check
+# Diagnostic: prints only counts and times, never email addresses.
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          q() { curl -s -X POST "https://api.supabase.com/v1/projects/kbaetbnzurntvhcqzihc/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" -d "{\"query\": \"$1\"}"; echo; }
+          q "select count(*) as matches, max(created_at) as created, bool_or(email_confirmed_at is not null) as confirmed from auth.users where encode(sha256(convert_to(lower(email),'UTF8')),'hex') = '024b1108d2f22f9fc2fc1f816a9cf9ea30b6451d16dd4832371fb1491be8ce1e'"
+          q "select date_trunc('hour', created_at) as hour, count(*) as signups, count(email_confirmed_at) as confirmed from auth.users where created_at > now() - interval '3 days' group by 1 order by 1 desc limit 20"
+          q "select count(*) as users_total from auth.users"
