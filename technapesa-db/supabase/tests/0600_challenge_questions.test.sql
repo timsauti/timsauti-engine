@@ -43,3 +43,12 @@ select public.challenge_photo_submit((select id from public.challenge_list where
 select pg_temp.expect((select status from public.stories where author_id = '00000000-0000-0000-0000-0000000000c1' and challenge_id = (select id from public.challenge_list where slug = '01')) = 'pending', 'photo entries wait for an originality check even from trusted writers');
 select pg_temp.expect((select original_declared_at is not null from public.stories where author_id = '00000000-0000-0000-0000-0000000000c1' and challenge_id = (select id from public.challenge_list where slug = '01')), 'the originality declaration is recorded');
 reset role;
+
+-- SMS to entrants when an entry is approved
+reset role;
+update public.stories set status = 'pending' where challenge_id is not null and status = 'published' and id = (select id from public.stories where challenge_id is not null and status = 'published' limit 1);
+update public.stories set status = 'published' where challenge_id is not null and status = 'pending';
+do $$ begin
+  if not exists (select 1 from public.sms_outbox where reason = 'entry_published' and message like '%/s/%') then raise exception 'FAILED: an approved entry queues an SMS with the vote link'; end if;
+  raise notice 'ok: an approved entry queues an SMS with the vote link';
+end $$;

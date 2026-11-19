@@ -639,6 +639,30 @@ async function whatsappSend() {
   } catch (e) { console.log('whatsapp: ' + mask(e.message)); }
 }
 
+// SMS through Africa's Talking (needs AT_USERNAME and AT_API_KEY secrets, and sms.notifications switched on in Admin, Settings).
+async function smsSend() {
+  try {
+    const cfg = await setting('sms.notifications', { on: false });
+    const user = process.env.AT_USERNAME, key = process.env.AT_API_KEY;
+    if (!cfg.on || !user || !key) return;
+    await rest(`sms_outbox?status=eq.queued&created_at=lt.${new Date(Date.now() - 2 * 86400000).toISOString()}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'skipped', error: 'older than two days' }) });
+    const rows = await rest('sms_outbox?status=eq.queued&order=id.asc&limit=50&select=id,phone,message');
+    let sent = 0;
+    for (const m of rows || []) {
+      const form = new URLSearchParams({ username: user, to: m.phone, message: m.message });
+      if (cfg.sender_id) form.set('from', cfg.sender_id);
+      const r = await fetch(user === 'sandbox' ? 'https://api.sandbox.africastalking.com/version1/messaging' : 'https://api.africastalking.com/version1/messaging',
+        { method: 'POST', signal: AbortSignal.timeout(30000), headers: { apiKey: key, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
+      const j = await r.json().catch(() => ({}));
+      const rec = j.SMSMessageData?.Recipients?.[0];
+      const good = r.ok && rec && /^(Success|Sent)$/i.test(rec.status);
+      await rest(`sms_outbox?id=eq.${m.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(good ? { status: 'sent', sent_at: new Date().toISOString(), cost: rec.cost || null } : { status: 'failed', error: mask(JSON.stringify(rec || j.SMSMessageData || r.status)).slice(0, 300) }) });
+      if (good) sent++;
+    }
+    if ((rows || []).length) console.log(`sms: ${sent} of ${rows.length} sent`);
+  } catch (e) { console.log('sms: ' + mask(e.message)); }
+}
+
 async function staffAlerts() {   // anything the site could not send straight away (owner's phone, Telegram)
   try {
     const rows = await rest('staff_alerts?sent_at=is.null&order=id.asc&limit=20&select=id,message');
@@ -692,5 +716,6 @@ if (require.main === module) (async () => {
     await billing();
     await vibeHourly();
     await whatsappSend();
+    await smsSend();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
 })();
