@@ -274,10 +274,10 @@ Return JSON: {"topic":"short topic","card":"the debate question for the poster, 
 // Sauti Media sets its own pace from its results (the owner allowed it to adjust): once a day it compares views of
 // news posts that went out close together (under 30 minutes apart) with posts spaced further apart, and the reach of
 // busy days against quieter days, then picks how many stories go out per run, how far apart, and a daily ceiling.
-const NEWS_PER_DAY = 40;   // owner, 11 Nov: up to 40 news stories a day (30 from 4 Nov), spread from 6am to 10.30pm; breaking and trending stories may add up to 8 more
+const NEWS_PER_DAY = 20;   // 19 Nov (owner's standing permission to slow down when reach falls): views and interactions per post fell from 14 Nov at about 33 posts a day, so 20 stronger stories a day; breaking and trending may add up to 8 more. (Was 40 from 11 Nov, 30 from 4 Nov.)
 function sautiPace(posts, notes) {
   const today = eatDate(Date.now()); const cur = STATE.sautiPace || { perRun: 3, gapMin: 20, dailyMax: NEWS_PER_DAY, day: '' };
-  if (cur.day === today) { if (cur.dailyMax === 30) cur.dailyMax = NEWS_PER_DAY; return cur; }   // the day the number was raised: lift the old 30 at once
+  if (cur.day === today) { if (cur.dailyMax !== NEWS_PER_DAY && (cur.dailyMax === 30 || cur.dailyMax > NEWS_PER_DAY)) cur.dailyMax = NEWS_PER_DAY; return cur; }   // the day the number was raised: lift the old 30 at once
   const pub = posts.filter((p) => p.status === 'PUBLISHED' && p.publishedAt).sort((a, b) => a.publishedAt.localeCompare(b.publishedAt));
   const rows = []; for (let i = 1; i < pub.length; i++) { const p = pub[i]; if (!p.fromNews || !p.metrics || typeof p.metrics.reach !== 'number') continue; const age = Date.now() - Date.parse(p.publishedAt); if (age < 86400000 || age > 8 * 86400000) continue; rows.push({ gap: (Date.parse(p.publishedAt) - Date.parse(pub[i - 1].publishedAt)) / 60000, reach: p.metrics.reach, day: eatDate(Date.parse(p.publishedAt)) }); }
   const med = (a) => { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
