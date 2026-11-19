@@ -501,9 +501,9 @@ Return JSON: {"title":"at most 12 words","dek":"one sentence summary, at most 30
   return null;
 }
 
-async function fbPhoto(pg, png, caption) {
+async function fbPhoto(pg, png, caption, type = 'image/png') {
   const fd = new FormData();
-  fd.append('source', new Blob([png], { type: 'image/png' }), 'post.png');
+  fd.append('source', new Blob([png], { type }), type === 'image/png' ? 'post.png' : 'photo.jpg');
   fd.append('message', caption); fd.append('published', 'true');
   const r = await fetch(`https://graph.facebook.com/${GV}/${FB_PAGES[PAGE_KEY].id}/photos`, { method: 'POST', headers: { Authorization: 'Bearer ' + pg.token }, body: fd, signal: AbortSignal.timeout(120000) });
   const j = await r.json().catch(() => ({}));
@@ -569,6 +569,52 @@ async function runPage({ dry = false, only = null } = {}) {
     }
   }
   return out;
+}
+
+// Challenge entries: each approved entry goes on the Page with its own photo, the start of the story,
+// the sponsor and the closing time; the link to read and vote goes in the first comment. Owner, 19 Nov 2026.
+async function runEntries() {
+  if (PAUSED) return;
+  if ((await setting('social.page_plan', 'on')) !== 'on') return;
+  const h = nowEAT().getUTCHours();
+  if (h < 7 || h >= 21) return;                                   // daytime only
+  const today = nowEAT().toISOString().slice(0, 10);
+  const postedToday = await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.entry&status=eq.posted&posted_at=gte.${today}T00:00:00%2B03:00&select=posted_at&order=posted_at.desc`);
+  if (postedToday.length >= 6) return;                            // at most six entries a day
+  if (postedToday[0] && Date.now() - new Date(postedToday[0].posted_at).getTime() < 50 * 60000) return;   // one an hour
+  const ch = (await rest('challenge_list?phase=in.(open,voting)&order=opens_at.desc&limit=1&select=id,number,slug,title,prize,sponsor_name,voting_close_at'))[0];
+  if (!ch) return;
+  const done = new Set((await rest(`social_shares?page_key=eq.${PAGE_KEY}&kind=eq.entry&status=in.(planned,posted,skipped)&select=ref`)).map((x) => x.ref));
+  const entries = await rest(`community_feed?challenge_id=eq.${ch.id}&select=id,slug,body,cover_path,author_id,author_name,published_at&order=published_at.asc&limit=100`);
+  const e = entries.find((x) => !done.has(x.id) && x.cover_path);
+  if (!e) return;
+  const first = String(e.author_name || 'A reader').split(' ')[0];
+  const story = String(e.body || '').replace(/\s+/g, ' ').trim();
+  const opening = story.length > 260 ? story.slice(0, story.lastIndexOf(' ', 250)) + '...' : story;
+  const closes = new Date(ch.voting_close_at).toLocaleString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Nairobi' });
+  const caption = `${e.author_name}'s primary school memory\n\n${opening}\n\n${first} is in the ${ch.sponsor_name ? ch.sponsor_name + ' ' : ''}Challenge on TECH na PESA. The entry with the most votes by ${closes} wins ${ch.prize}. Voting is free and takes a minute.\n\nWhat does this photo remind you of from your own primary school days?`;
+  const comment = `Read ${first}'s full story and vote here: ${SITE}/s/${e.slug}`;
+  if (!ok(caption)) { console.log('entries: caption failed the checks'); return; }
+  const pg = await pageToken(FB_PAGES[PAGE_KEY].id);
+  if (!pg || !FB_PAGES[PAGE_KEY].mustBeNamed.test(pg.name)) { console.log('entries: Page not ready'); return; }
+  const img = await fetch(`${SB}/storage/v1/object/public/community-media/${e.cover_path}`, { signal: AbortSignal.timeout(60000) });
+  if (!img.ok) { console.log('entries: photo not found for ' + e.slug); await rest('social_shares', { method: 'POST', body: JSON.stringify({ kind: 'entry', ref: e.id, page_key: PAGE_KEY, link: `${SITE}/s/${e.slug}`, status: 'skipped' }) }); return; }
+  const photo = Buffer.from(await img.arrayBuffer());
+  const type = (img.headers.get('content-type') || 'image/jpeg').split(';')[0];
+  const row = (await rest('social_shares', { method: 'POST', body: JSON.stringify({ kind: 'entry', ref: e.id, page_key: PAGE_KEY, link: `${SITE}/s/${e.slug}`, caption, planned_for: new Date().toISOString() }) }))[0];
+  try {
+    const postId = await fbPhoto(pg, photo, caption, type);
+    const commentId = await fbComment(pg, postId, comment);
+    await rest(`social_shares?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'posted', fb_post_id: postId, comment_id: commentId, posted_at: new Date().toISOString() }) });
+    await audit('social.entry_post', 'story', e.id, { fb_post_id: postId, link_comment: Boolean(commentId) });
+    const fbLink = `https://www.facebook.com/${postId}`;
+    await rest('notifications', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: e.author_id, topic: 'content', title: 'Your challenge entry is on the TECH na PESA Facebook Page', body: `Share the Facebook post with friends so they vote for you: ${fbLink}`, link: `/s/${e.slug}` }) });
+    console.log(`entries: posted ${e.slug}${commentId ? ' with the vote link' : ', vote link comment failed'}`);
+    if (!commentId) await telegram(`TECH na PESA Page: an entry post went out, but the vote link comment failed. Add it by hand: ${comment}`);
+  } catch (err) {
+    await rest(`social_shares?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'failed', error: mask(err.message).slice(0, 300) }) });
+    console.log('entries: failed ' + mask(err.message).slice(0, 200));
+  }
 }
 
 // WhatsApp notifications through the WhatsApp Business Cloud API (needs WHATSAPP_TOKEN and WHATSAPP_PHONE_ID secrets
@@ -641,6 +687,7 @@ if (require.main === module) (async () => {
     if (PAUSED) console.log('agent paused: no shares; drafts still prepared for staff');
     await runJobs();
     if ((await setting('social.page_plan', 'on').catch(() => 'on')) === 'on') await runPage(); else await runShares();
+    await runEntries().catch((e) => console.log('entries: ' + mask(e.message)));
     await staffAlerts();
     await billing();
     await vibeHourly();
