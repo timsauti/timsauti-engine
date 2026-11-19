@@ -381,6 +381,11 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     // TARGET = a Google News link: finds the real article and how much story text the agent can read from it
     const S = require('./sauti'); const real = /news\.google\./.test(TARGET) ? await S.gnResolve(TARGET) : TARGET; const text = real ? await S.articleText(real) : '';
     fs.writeFileSync(path.join(ROOT, 'data', 'news_debug.json'), JSON.stringify({ at: new Date().toISOString(), link: TARGET, real, textLength: text.length, how: S.articleText.last, start: text.slice(0, 300) }, null, 1)); console.log(real || 'not resolved');
+  } else if (ACTION === 'tgbutton') {
+    // sends the owner one message with a test button; the next agent run records the tap in data/logs/taps.log
+    const tk = process.env.TELEGRAM_BOT_TOKEN, ow = process.env.TELEGRAM_OWNER_ID;
+    const r = await fetch(`https://api.telegram.org/bot${tk}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: ow, text: TARGET || 'Agent check: please tap the button below once.', reply_markup: { inline_keyboard: [[{ text: 'Tap to test', callback_data: 't|test|' + Date.now() }]] } }) });
+    const j = await r.json().catch(() => ({})); console.log('test button sent: ' + (j.ok ? 'yes' : 'no ' + (j.description || '')));
   } else if (ACTION === 'tgtest') {
     // sends one short check message to the owner and records Telegram's answer (no secrets recorded)
     const tk = process.env.TELEGRAM_BOT_TOKEN, ow = process.env.TELEGRAM_OWNER_ID;

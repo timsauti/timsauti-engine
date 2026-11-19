@@ -158,7 +158,11 @@ async function processTelegram(ctx) {
     state.tgOffset = u.update_id + 1;
     try {
       if (u.callback_query) {
-        const q = u.callback_query; if (!tg.isOwner(q.from)) continue;
+        const q = u.callback_query;
+        // owner, 19 Nov ("once I approve a post it doesn't get posted"): every tap is recorded so a lost one can be traced
+        try { fs.appendFileSync(path.join(ctx.ROOT || process.cwd(), 'data', 'logs', 'taps.log'), JSON.stringify({ at: new Date().toISOString(), tapped: new Date((q.message && q.message.date || 0) * 1000).toISOString(), data: q.data, owner: tg.isOwner(q.from) }) + '\n'); } catch (e) {}
+        if (String(q.data || '').startsWith('t|')) { await tg.answer(q.id, 'Test tap received'); await tg.done(q.message.message_id, 'Test tap received by the agent. Thank you.'); continue; }
+        if (!tg.isOwner(q.from)) continue;
         const [act, pk, id] = String(q.data || '').split('|'); const page = pages.find((p) => p.key === pk);
         if (pk === 'cornerstone' && (act === 'ca' || act === 'cs')) {   // client drafts (Cornerstone): approve or skip
           const st = require('./cornerstone').decide(id, act === 'ca');
