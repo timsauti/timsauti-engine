@@ -28,6 +28,9 @@ jobs:
           WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
           AT_USERNAME: ${{ secrets.AT_USERNAME }}
           AT_API_KEY: ${{ secrets.AT_API_KEY }}
+          ONFON_API_KEY: ${{ secrets.ONFON_API_KEY }}
+          ONFON_CLIENT_ID: ${{ secrets.ONFON_CLIENT_ID }}
+          ONFON_ACCESS_KEY: ${{ secrets.ONFON_ACCESS_KEY }}
           WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
           TNP_SITE_URL: ${{ vars.TNP_SITE_URL || 'https://technapesa.co.ke' }}
         run: node agent/tnp.js
