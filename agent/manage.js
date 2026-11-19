@@ -286,7 +286,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     const tk = process.env.TELEGRAM_BOT_TOKEN; const st = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'state.json'), 'utf8'));
     const r = await fetch(`https://api.telegram.org/bot${tk}/getUpdates?offset=${st.tgOffset || 0}&timeout=0`); const j = await r.json().catch(() => ({}));
     const out = (j.result || []).map((u) => ({ id: u.update_id, kind: u.message ? (u.message.photo ? 'photo' : 'text') : u.callback_query ? 'button' : 'other', text: String((u.message && (u.message.text || u.message.caption)) || (u.callback_query && u.callback_query.data) || '').slice(0, 60), date: u.message ? new Date(u.message.date * 1000).toISOString() : null }));
-    fs.writeFileSync(path.join(ROOT, 'data', 'tg_peek.json'), JSON.stringify({ offset: st.tgOffset, ok: j.ok, pending: out }, null, 1)); console.log(out.length + ' waiting');
+    const wh = await (await fetch(`https://api.telegram.org/bot${tk}/getWebhookInfo`)).json().catch(() => ({})); fs.writeFileSync(path.join(ROOT, 'data', 'tg_peek.json'), JSON.stringify({ offset: st.tgOffset, ok: j.ok, error: j.description || null, webhook: wh.result ? { url: wh.result.url ? 'set' : '', pending: wh.result.pending_update_count, lastError: wh.result.last_error_message || null } : null, pending: out }, null, 1)); console.log(out.length + ' waiting');
   } else if (ACTION === 'hideobj') {
     // hide a Facebook object of this Page by its own id (for a booked photo that has no post id yet); never deletes
     const out = [];
