@@ -699,6 +699,31 @@ async function vibeHourly() {   // TnPVibe: event reminders a day ahead, clearin
   catch (e) { console.log('vibe: ' + mask(e.message)); }
 }
 
+// TnP Desk (owner, 20 Nov 2026): the official @tnpdesk account keeps the county spaces alive with checked opportunities
+// and a weekly county question. Its login is created once with a random password that is never stored or used.
+async function vibeDesk() {
+  try {
+    const cfg = await setting('vibe.desk', {});
+    if (!cfg.user_id) {
+      const k = await serviceKey(); const email = 'tnpdesk@technapesa.co.ke';
+      const pw = require('crypto').randomBytes(30).toString('base64url');
+      let r = await fetch(`${SB}/auth/v1/admin/users`, { method: 'POST', signal: AbortSignal.timeout(30000), headers: { apikey: k, Authorization: 'Bearer ' + k, 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password: pw, email_confirm: true, user_metadata: { full_name: 'TnP Desk', accepted_terms: true, terms_version: '2026-11-16' } }) });
+      let j = await r.json().catch(() => ({}));
+      let id = j.id || j.user?.id;
+      if (!id) {   // already exists: find it
+        r = await fetch(`${SB}/auth/v1/admin/users?page=1&per_page=1000`, { signal: AbortSignal.timeout(30000), headers: { apikey: k, Authorization: 'Bearer ' + k } });
+        j = await r.json().catch(() => ({})); id = (j.users || []).find((u) => u.email === email)?.id;
+      }
+      if (!id) { console.log('desk: could not create the desk account'); return; }
+      const res = await rest('rpc/vibe_desk_setup', { method: 'POST', body: JSON.stringify({ p_user: id }) });
+      console.log(`desk: set up in ${res.spaces} county spaces`);
+    }
+    const t = await rest('rpc/vibe_desk_tick', { method: 'POST', body: '{}' });
+    if (t.sent) console.log(`desk: ${t.sent} county post(s)`);
+  } catch (e) { console.log('desk: ' + mask(e.message)); }
+}
+
 async function billing() {
   try {
     const r = await rest('rpc/growth_billing_daily', { method: 'POST', body: '{}' });
@@ -736,6 +761,7 @@ if (require.main === module) (async () => {
     await staffAlerts();
     await billing();
     await vibeHourly();
+    await vibeDesk();
     await whatsappSend();
     await smsSend();
   } catch (e) { console.log('tnp: ' + mask(e.message)); process.exitCode = 1; }
