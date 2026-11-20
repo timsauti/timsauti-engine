@@ -653,6 +653,7 @@ async function sendOneSms(cfg, phone, text) {
     const j = await r.json().catch(() => ({}));
     // 20 Nov: texts were accepted but never delivered; log Onfon's own answer (no keys, number shortened) to find out why
     console.log(`sms onfon: http ${r.status}, code ${j.ErrorCode}, ${String(j.ErrorDescription || '').slice(0, 80)}, ${(j.Data || []).length} item(s), message id ${j.Data?.[0]?.MessageId ? 'given' : 'none'}, access key ${process.env.ONFON_ACCESS_KEY ? 'own' : 'API key'}, to ...${phone.slice(-3)}`);
+    { const d = (j.Data || [])[0] || {}; console.log('sms onfon item: ' + Object.entries(d).map(([k, v]) => `${k}=${/number|mobile/i.test(k) ? '...' + String(v).slice(-3) : String(v).slice(0, 80)}`).join(', ')); }
     return r.ok && Number(j.ErrorCode) === 0 && j.Data?.[0]?.MessageId ? { ok: true, id: j.Data?.[0]?.MessageId } : { error: mask(JSON.stringify(j.ErrorDescription || j || r.status)).slice(0, 300) };
   }
   const user = process.env.AT_USERNAME, key = process.env.AT_API_KEY;
