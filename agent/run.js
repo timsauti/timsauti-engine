@@ -604,7 +604,7 @@ Return JSON: {"theme":"two or three words","lines":[["situation","response"],["s
 
 // ---------- publishing ----------
 async function publish(page, p, at) {
-  const buf = require('./strip').strip(fs.readFileSync(path.join(ROOT, p.image.file)));   // no hidden AI labels reach Facebook
+  const buf = require('./strip').strip(fs.readFileSync(path.join(ROOT, p.image.file)), p.id);   // refuses AI made images (owner, 20 Nov)
   const fd = new FormData();
   const jpg = /\.jpe?g$/i.test(p.image.file);
   fd.append('source', new Blob([buf], { type: jpg ? 'image/jpeg' : 'image/png' }), p.id + (jpg ? '.jpg' : '.png'));
