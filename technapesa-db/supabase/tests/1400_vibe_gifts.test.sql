@@ -22,7 +22,7 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000d0b2'); select public.vi
 select pg_temp.expect(not (public.vibe_gift_info('00000000-0000-0000-0000-00000000d0a1')->>'open')::boolean, 'gifts are closed until the owner switches them on');
 select pg_temp.fails($$select public.vibe_gift_send('00000000-0000-0000-0000-00000000d0a1', null, 'chai', 'SKL2ABC3DE')$$, 'no gift can be sent while gifts are off');
 reset role;
-update public.site_settings set value = value || '{"on": true, "till": "123456"}'::jsonb where key = 'vibe.gifts';
+update public.site_settings set value = value || '{"on": true, "till": "123456", "pay": "till"}'::jsonb where key = 'vibe.gifts';
 set role authenticated;
 select pg_temp.expect(not (public.vibe_gift_info('00000000-0000-0000-0000-00000000d0a1')->>'open')::boolean, 'a creator receives gifts only after choosing to');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000d0a1');
@@ -63,4 +63,4 @@ select pg_temp.expect(jsonb_array_length(public.vibe_featured_counties()) = 4, '
 select pg_temp.expect(public.vibe_featured_counties()->1->>'name' = 'Nairobi', 'featured counties keep their order');
 reset role;
 select pg_temp.expect((select count(*) from public.audit_log where action in ('vibe.gift_confirmed', 'vibe.gift_rejected', 'vibe.gift_payout')) = 3, 'every money step is audited');
-update public.site_settings set value = value || '{"on": false, "till": null}'::jsonb where key = 'vibe.gifts';
+update public.site_settings set value = value || '{"on": false, "till": null, "pay": "mpesa"}'::jsonb where key = 'vibe.gifts';

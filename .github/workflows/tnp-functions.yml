@@ -29,7 +29,8 @@ jobs:
             npx -y supabase@2.122.0 secrets set --project-ref "$PROJECT_REF" PAYSTACK_SECRET_KEY="$PAYSTACK_SECRET_KEY" SITE_URL=https://technapesa.co.ke >/dev/null
             echo "Paystack key set ($(echo "$PAYSTACK_SECRET_KEY" | cut -c1-8)...)"
             curl -fsS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "content-type: application/json" \
-              -d '{"query":"update public.site_settings set value = to_jsonb($$automatic$$::text), updated_at = now() where key = $$payments.mode$$"}' >/dev/null && echo "Site switched to the M-PESA prompt"
+              -d '{"query":"update public.site_settings set value = value || $${\"on\": true, \"pay\": \"mpesa\"}$$::jsonb, updated_at = now() where key = $$vibe.gifts$$"}' >/dev/null && echo "TnPVibe gifts switched on (M-PESA prompt)"
+            # Package payments keep the mode the owner chose (payment links); switch payments.mode to automatic only when he asks.
           else
             echo "PAYSTACK_SECRET_KEY is not set in this repository yet; payments stay switched off"
           fi
@@ -39,6 +40,8 @@ jobs:
           npx -y supabase@2.122.0 functions deploy paystack-init --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-verify --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-mpesa --project-ref "$PROJECT_REF" --use-api
+          npx -y supabase@2.122.0 functions deploy gift-mpesa --project-ref "$PROJECT_REF" --use-api
+          npx -y supabase@2.122.0 functions deploy gift-verify --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy staff-alert --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy budget-plan --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-webhook --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
