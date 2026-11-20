@@ -274,10 +274,11 @@ Return JSON: {"topic":"short topic","card":"the debate question for the poster, 
 // Sauti Media sets its own pace from its results (the owner allowed it to adjust): once a day it compares views of
 // news posts that went out close together (under 30 minutes apart) with posts spaced further apart, and the reach of
 // busy days against quieter days, then picks how many stories go out per run, how far apart, and a daily ceiling.
-const NEWS_PER_DAY = 20;   // 19 Nov (owner's standing permission to slow down when reach falls): views and interactions per post fell from 14 Nov at about 33 posts a day, so 20 stronger stories a day; breaking and trending may add up to 8 more. (Was 40 from 11 Nov, 30 from 4 Nov.)
+const NEWS_PER_DAY = 10;   // 20 Nov (owner: "we are losing followers, I guess we are over posting, reduce a bit further"): 10 news stories a day, at least 90 minutes apart, breaking news may add 2 more. 19 Nov (owner's standing permission to slow down when reach falls): views and interactions per post fell from 14 Nov at about 33 posts a day, so 20 stronger stories a day; breaking and trending may add up to 8 more. (Was 40 from 11 Nov, 30 from 4 Nov.)
+const NEWS_GAP_MIN = 90, NEWS_URGENT_EXTRA = 2;
 function sautiPace(posts, notes) {
   const today = eatDate(Date.now()); const cur = STATE.sautiPace || { perRun: 3, gapMin: 20, dailyMax: NEWS_PER_DAY, day: '' };
-  if (cur.day === today) { if (cur.dailyMax !== NEWS_PER_DAY && (cur.dailyMax === 30 || cur.dailyMax > NEWS_PER_DAY)) cur.dailyMax = NEWS_PER_DAY; return cur; }   // the day the number was raised: lift the old 30 at once
+  if (cur.day === today) { cur.gapMin = Math.max(cur.gapMin, NEWS_GAP_MIN); cur.perRun = Math.min(cur.perRun, 1); if (cur.dailyMax !== NEWS_PER_DAY && (cur.dailyMax === 30 || cur.dailyMax > NEWS_PER_DAY)) cur.dailyMax = NEWS_PER_DAY; return cur; }   // the day the number was raised: lift the old 30 at once
   const pub = posts.filter((p) => p.status === 'PUBLISHED' && p.publishedAt).sort((a, b) => a.publishedAt.localeCompare(b.publishedAt));
   const rows = []; for (let i = 1; i < pub.length; i++) { const p = pub[i]; if (!p.fromNews || !p.metrics || typeof p.metrics.reach !== 'number') continue; const age = Date.now() - Date.parse(p.publishedAt); if (age < 86400000 || age > 8 * 86400000) continue; rows.push({ gap: (Date.parse(p.publishedAt) - Date.parse(pub[i - 1].publishedAt)) / 60000, reach: p.metrics.reach, day: eatDate(Date.parse(p.publishedAt)) }); }
   const med = (a) => { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
@@ -296,6 +297,7 @@ function sautiPace(posts, notes) {
   // the weekly review sets a ceiling (STATE.sautiCap); the daily check may slow down further but never go faster than it
   const cap = STATE.sautiCap; if (cap) { next.perRun = Math.min(next.perRun, cap.perRun); next.gapMin = Math.max(next.gapMin, cap.gapMin); next.dailyMax = Math.min(next.dailyMax, NEWS_PER_DAY); } else next.dailyMax = Math.min(next.dailyMax, NEWS_PER_DAY);   // the daily number is the owner's (40); the slowdown to 15 on proof of over posting still applies
   if (next.perRun !== cur.perRun || next.gapMin !== cur.gapMin || next.dailyMax !== cur.dailyMax) { notes.push(`Sauti Media pace adjusted: up to ${next.perRun} stories an hour, ${next.gapMin} minutes apart${next.dailyMax < 60 ? ', at most ' + next.dailyMax + ' a day' : ''}. Reason: ${why}.`); audit('sauti', { event: 'pace_changed', from: cur, to: next }); }
+  next.gapMin = Math.max(next.gapMin, NEWS_GAP_MIN); next.perRun = Math.min(next.perRun, 1);
   STATE.sautiPace = next; return next;
 }
 // ---------- final editor check: every post is looked at (picture and words together) before it goes out ----------
@@ -381,8 +383,8 @@ async function sautiNewsNow(page, posts, notes) {
   // The day's stories are now spread from 6am to 10.30pm, so there is always room in the evening, and a breaking or
   // trending story is never blocked by the count (up to 8 more than the daily number).
   const doneToday = posts.filter((p) => (p.status === 'PUBLISHED' || p.status === 'PUBLISHING') && p.fromNews && eatDate(Date.parse(p.publishedAt || p.scheduledAt)) === eatDate(Date.now())).length;
-  const allowedNow = Math.min(pace.dailyMax, Math.ceil(pace.dailyMax * (h - 6) / 16) + 4);
-  if (doneToday >= pace.dailyMax + 8) return;
+  const allowedNow = Math.min(pace.dailyMax, Math.ceil(pace.dailyMax * (h - 6) / 16) + 1);
+  if (doneToday >= pace.dailyMax + NEWS_URGENT_EXTRA) return;
   const urgentOnly = doneToday >= allowedNow;
   const booked = posts.filter((p) => p.fromNews && p.publishedAt && Date.parse(p.publishedAt) > Date.now()).length; let rejects = 0;
   // GitHub often starts the agent only once an hour, so each run books stories ahead on Facebook, spaced out, to cover the gap
