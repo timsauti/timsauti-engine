@@ -4,6 +4,8 @@ name: TECH na PESA Google and Facebook sign in
 # Secrets used: SUPABASE_ACCESS_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET.
 on:
   workflow_dispatch:
+    inputs:
+      show_facebook: { description: 'Show the Facebook button on the site (only once the Facebook app is Live)', type: boolean, default: false }
   push: { branches: [main], paths: ['.github/workflows/tnp-auth.yml'] }
 concurrency: { group: tnp-auth, cancel-in-progress: false }
 env:
@@ -36,6 +38,8 @@ jobs:
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "content-type: application/json" --data-binary "$body")
           if [ "$code" -ge 300 ]; then echo "Supabase refused the settings (HTTP $code)"; jq -r '.message // .error // "no message"' /tmp/r.json 2>/dev/null | head -c 300; exit 1; fi
           echo "Supabase sign in updated: Google=$G Facebook=$F"
+          # The Facebook button shows only when asked (the Facebook app must be Live first); the provider itself is on for testing.
+          if [ "${{ inputs.show_facebook }}" != "true" ]; then F=false; fi
           q=$(jq -n --arg sql "update public.site_settings set value = jsonb_build_object('google', $G, 'facebook', $F), updated_at = now() where key = 'auth.social'" '{query: $sql}')
           curl -fsS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "content-type: application/json" -d "$q" >/dev/null
           echo "Buttons on the site: Google=$G Facebook=$F"
