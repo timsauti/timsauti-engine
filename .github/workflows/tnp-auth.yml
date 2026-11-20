@@ -23,6 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           G=false; F=false
+          for k in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET FACEBOOK_APP_ID FACEBOOK_APP_SECRET; do if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: missing"; fi; done
           body='{}'
           if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
             G=true; body=$(jq -n --argjson b "$body" --arg i "$GOOGLE_CLIENT_ID" --arg s "$GOOGLE_CLIENT_SECRET" '$b + {external_google_enabled: true, external_google_client_id: $i, external_google_secret: $s}')
