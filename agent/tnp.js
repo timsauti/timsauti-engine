@@ -647,12 +647,12 @@ async function sendOneSms(cfg, phone, text) {
     const key = process.env.ONFON_API_KEY, client = process.env.ONFON_CLIENT_ID;
     if (!key || !client || !cfg.sender_id) return { skip: 'Onfon keys or sender ID missing' };
     const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
-    if (process.env.ONFON_ACCESS_KEY) headers.AccessKey = process.env.ONFON_ACCESS_KEY;
+    headers.AccessKey = process.env.ONFON_ACCESS_KEY || key;   // 20 Nov: the newer Onfon portal shows only Client ID and API Key; the API Key is the AccessKey
     const r = await fetch('https://api.onfonmedia.co.ke/v1/sms/SendBulkSMS', { method: 'POST', signal: AbortSignal.timeout(30000), headers,
       body: JSON.stringify({ SenderId: cfg.sender_id, IsUnicode: false, IsFlash: false, MessageParameters: [{ Number: phone.replace('+', ''), Text: text }], ApiKey: key, ClientId: client }) });
     const j = await r.json().catch(() => ({}));
     // 20 Nov: texts were accepted but never delivered; log Onfon's own answer (no keys, number shortened) to find out why
-    console.log(`sms onfon: http ${r.status}, code ${j.ErrorCode}, ${String(j.ErrorDescription || '').slice(0, 80)}, ${(j.Data || []).length} item(s), message id ${j.Data?.[0]?.MessageId ? 'given' : 'none'}, access key ${process.env.ONFON_ACCESS_KEY ? 'present' : 'missing'}, to ...${phone.slice(-3)}`);
+    console.log(`sms onfon: http ${r.status}, code ${j.ErrorCode}, ${String(j.ErrorDescription || '').slice(0, 80)}, ${(j.Data || []).length} item(s), message id ${j.Data?.[0]?.MessageId ? 'given' : 'none'}, access key ${process.env.ONFON_ACCESS_KEY ? 'own' : 'API key'}, to ...${phone.slice(-3)}`);
     return r.ok && Number(j.ErrorCode) === 0 && j.Data?.[0]?.MessageId ? { ok: true, id: j.Data?.[0]?.MessageId } : { error: mask(JSON.stringify(j.ErrorDescription || j || r.status)).slice(0, 300) };
   }
   const user = process.env.AT_USERNAME, key = process.env.AT_API_KEY;
