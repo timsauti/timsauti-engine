@@ -296,12 +296,12 @@ function noVig(pr) {
 }
 
 // ---------- 4c. Gemini with Google Search (team news and jackpot lists) ----------
-async function gemini(q) {
+async function gemini(q, grounded = true) {
   if (!S.geminiKey) return '';
-  for (const model of ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-flash-latest']) {
+  for (const model of ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest']) {
     try {
       const r = await http({ method: 'POST', url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, headers: { 'x-goog-api-key': S.geminiKey }, timeout: 120000,
-        body: { contents: [{ role: 'user', parts: [{ text: q }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.1 } } });
+        body: { contents: [{ role: 'user', parts: [{ text: q }] }], ...(grounded ? { tools: [{ google_search: {} }] } : {}), generationConfig: { temperature: 0.1 } } });
       const text = ((((r.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || '').join('');
       if (text) return text;
     } catch (e) { gemini.err = (gemini.err ? gemini.err + " || " : "") + `${model}: ${String(e.message).replace(/\s+/g, " ").replace(/^.*?For m/, "For m").slice(0, 400)}`; }
@@ -444,6 +444,22 @@ if (shortlist.length) {
   const lines = shortlist.map((p, i) => `${i + 1}. ${p.home} v ${p.away} (${p.league}, kickoff ${new Date(p.date).toISOString().slice(0, 16)} UTC). Pick: ${p.label}.`).join('\n');
   const q = `You are a careful football analyst checking team news before a bet. Today is ${new Date(NOW).toISOString().slice(0, 10)}. For each match below, search the latest news from the past four days: injuries, suspensions, expected rotation, manager changes and motivation. Decide if the news clearly weakens the pick. Drop only on specific, confirmed news, for example a key striker ruled out when the pick backs that team to win or for goals, or the first choice keeper or several defenders out when the pick is under goals. If the news is unclear or you find nothing, keep the pick. Never invent players or news.\n\n${lines}\n\nReply with only a JSON array, one object per match in the same order: [{"n":1,"verdict":"keep","news":"key team news in under 20 words"}]. verdict is keep or drop.`;
   try { verdicts = jsonArray(await gemini(q)); } catch (e) {}
+  // free route: read the latest Google News headlines ourselves, then ask Gemini to judge them without web search
+  if (!verdicts) {
+    const decode = (x) => String(x).replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const blocks = [];
+    for (const [i, p] of shortlist.entries()) {
+      let heads = [];
+      try {
+        const xml = await http({ url: 'https://news.google.com/rss/search', qs: { q: `"${p.home}" "${p.away}" team news when:4d`, hl: 'en-GB', gl: 'GB', ceid: 'GB:en' }, json: false, timeout: 15000 });
+        heads = [...String(xml).matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>/g)].slice(0, 8).map((m) => `- ${decode(m[1])} (${m[2].slice(5, 16)})`);
+      } catch (e) {}
+      blocks.push(`${i + 1}. ${p.home} v ${p.away} (${p.league}). Pick: ${p.label}.\nHeadlines from the last four days:\n${heads.join('\n') || '- none found'}`);
+      await sleep(300);
+    }
+    const q2 = `You are a careful football analyst checking team news before a bet. Today is ${new Date(NOW).toISOString().slice(0, 10)}. Below, for each match, are the latest news headlines. Using ONLY these headlines, decide if confirmed news clearly weakens the pick: for example a key striker ruled out when the pick backs that team to win or for goals, the first choice keeper or several defenders out when the pick is under goals, or heavy rotation. If the headlines are unclear or say nothing relevant, keep the pick. Never invent players or news.\n\n${blocks.join('\n\n')}\n\nReply with only a JSON array, one object per match in the same order: [{"n":1,"verdict":"keep","news":"key team news in under 20 words, or 'no notable news'"}]. verdict is keep or drop.`;
+    try { verdicts = jsonArray(await gemini(q2, false)); } catch (e) {}
+  }
   if (!verdicts && S.debug && S.geminiKey) { // diagnostic: does a plain call without web search work on this key?
     try { const r = await http({ method: 'POST', url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', headers: { 'x-goog-api-key': S.geminiKey }, body: { contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK' }] }] } });
       notes.push('Gemini plain call: ' + JSON.stringify(r).slice(0, 80)); } catch (e) { notes.push('Gemini plain call failed: ' + String(e.message).replace(/\s+/g, ' ').slice(0, 300)); }
