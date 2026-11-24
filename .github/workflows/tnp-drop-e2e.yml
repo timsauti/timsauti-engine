@@ -67,7 +67,7 @@ jobs:
               drop_id = rows[0]['id'] if s == 200 and rows else ''
 
               s, rows = http('GET', f'{URL}/rest/v1/vibe_drops?select=id', None, {'apikey': anon, 'Authorization': 'Bearer ' + anon})
-              check(s == 200 and rows == [], 'visitors cannot read anyone\'s Drops', rows)
+              check((s == 200 and rows == []) or s in (401, 403), 'visitors cannot read anyone\'s Drops', rows)
 
               s, r = http('POST', f'{URL}/functions/v1/drop-reply', {'action': 'reply', 'drop_id': drop_id, 'message': 'Live test reply, thank you!'}, member)
               check(s == 200, 'the member replies privately', r)
