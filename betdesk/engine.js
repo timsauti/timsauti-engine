@@ -304,7 +304,7 @@ async function gemini(q) {
         body: { contents: [{ role: 'user', parts: [{ text: q }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.1 } } });
       const text = ((((r.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || '').join('');
       if (text) return text;
-    } catch (e) { gemini.err = (gemini.err ? gemini.err + " || " : "") + `${model}: ${String(e.message).replace(/\s+/g, " ").slice(0, 260)}`; }
+    } catch (e) { gemini.err = (gemini.err ? gemini.err + " || " : "") + `${model}: ${String(e.message).replace(/\s+/g, " ").replace(/^.*?For m/, "For m").slice(0, 400)}`; }
   }
   return '';
 }
@@ -444,6 +444,10 @@ if (shortlist.length) {
   const lines = shortlist.map((p, i) => `${i + 1}. ${p.home} v ${p.away} (${p.league}, kickoff ${new Date(p.date).toISOString().slice(0, 16)} UTC). Pick: ${p.label}.`).join('\n');
   const q = `You are a careful football analyst checking team news before a bet. Today is ${new Date(NOW).toISOString().slice(0, 10)}. For each match below, search the latest news from the past four days: injuries, suspensions, expected rotation, manager changes and motivation. Decide if the news clearly weakens the pick. Drop only on specific, confirmed news, for example a key striker ruled out when the pick backs that team to win or for goals, or the first choice keeper or several defenders out when the pick is under goals. If the news is unclear or you find nothing, keep the pick. Never invent players or news.\n\n${lines}\n\nReply with only a JSON array, one object per match in the same order: [{"n":1,"verdict":"keep","news":"key team news in under 20 words"}]. verdict is keep or drop.`;
   try { verdicts = jsonArray(await gemini(q)); } catch (e) {}
+  if (!verdicts && S.debug && S.geminiKey) { // diagnostic: does a plain call without web search work on this key?
+    try { const r = await http({ method: 'POST', url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', headers: { 'x-goog-api-key': S.geminiKey }, body: { contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK' }] }] } });
+      notes.push('Gemini plain call: ' + JSON.stringify(r).slice(0, 80)); } catch (e) { notes.push('Gemini plain call failed: ' + String(e.message).replace(/\s+/g, ' ').slice(0, 300)); }
+  }
   if (!verdicts) notes.push(`Team news check unavailable today: picks are based on the numbers only.${S.debug ? ' (' + (gemini.err || 'no reply') + ')' : ''}`);
 }
 const kept = [], dropped = [];
