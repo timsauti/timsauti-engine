@@ -80,6 +80,11 @@ jobs:
               replies = r.get('replies', []) if isinstance(r, dict) else []
               check(s == 200 and any(x.get('author_role') == 'recipient' for x in replies), 'the visitor reads the reply with the private link', r)
 
+              s, r = http('POST', f'{URL}/rest/v1/rpc/my_earnings', {}, member)
+              check(s == 200 and isinstance(r, dict) and r.get('total_earned_kes') == 0 and 'invites' in r, 'a new member sees their earnings (KSh 0)', r)
+              s, r = http('POST', f'{URL}/rest/v1/rpc/earnings_board', {'p_limit': 5}, {'apikey': anon, 'Authorization': 'Bearer ' + anon, 'Content-Type': 'application/json'})
+              check(s == 200 and isinstance(r, dict) and 'total_earned_kes' in r and 'phone' not in json.dumps(r), 'visitors see the public earners board without phone numbers', r)
+              if s == 200 and isinstance(r, dict): print('EARNINGS BOARD: total earned KSh', r.get('total_earned_kes'), '| paid KSh', r.get('total_paid_kes'), '| earners', r.get('earners'))
               s, r = http('POST', f'{URL}/functions/v1/drop-submit', {'username': uname, 'message': 'x', 'sender_mode': 'anonymous'}, {**visitor, 'Origin': 'https://example.com'})
               check(s == 403, 'sends from other websites are refused', r)
           finally:
