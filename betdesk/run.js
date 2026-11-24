@@ -24,10 +24,11 @@ const settings = {
   forceBig: env.FORCE_BIG === '1',
   accaBook: env.ACCA_BOOK || '', // owner's app for the daily multibet
   accaMinP: Number(env.ACCA_MIN_P || 0.7),
-  accaMaxLegs: Number(env.ACCA_MAX_LEGS || 6),
+  accaMaxLegs: Number(env.ACCA_MAX_LEGS || 2), // owner's rule from 24 Nov: doubles at most
   accaStakeKES: Number(env.ACCA_STAKE_KES || 100),
   flatStakeKES: Number(env.FLAT_STAKE_KES || 0),
-  maxPicks: 10,
+  bigSlip: false, // ambitious slips paused (owner's rule, 24 Nov)
+  maxPicks: 5, // fewer, stronger bets
   hoursAhead: Number(env.HOURS_AHEAD || 30),
   includeKenyanLeague: env.INCLUDE_KPL === '1', // API-Football free plan does not open the current season
   sendToTelegram: !dry,

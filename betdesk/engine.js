@@ -481,7 +481,7 @@ for (const b of KENYA_BOOKS.filter((k) => !S.accaBook || k.name.toLowerCase() ==
   const one = {};
   for (const l of accaLegs.filter((x) => x.book === b.name && x.p >= num(S.accaMinP, 0.7))) if (!one[l.key] || l.ev > one[l.key].ev) one[l.key] = l;
   const legs = Object.values(one).sort((a, c) => c.ev - a.ev).slice(0, num(S.accaMaxLegs, 6));
-  if (legs.length < 3) continue;
+  if (legs.length < 2) continue; // doubles allowed
   const odds = legs.reduce((t, x) => t * x.odds, 1), pr = legs.reduce((t, x) => t * x.p, 1);
   if (!acca || pr * odds > acca.pr * acca.odds) acca = { book: b.name, legs: legs.sort((a, c) => a.date - c.date), odds, pr };
 }
