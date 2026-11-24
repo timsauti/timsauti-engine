@@ -1,0 +1,89 @@
+name: TECH na PESA Tukachap Drop live test
+# Checks Tukachap Drop (Confessions) against the live database with one throwaway member, then deletes it.
+# A visitor sends an anonymous Drop, the member reads it in their inbox, replies, and the visitor reads the reply
+# through the private reply token. Keys are fetched at run time and masked; nothing personal is stored here.
+on:
+  workflow_dispatch:
+env:
+  PROJECT_REF: kbaetbnzurntvhcqzihc
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Run the Drop journey
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, secrets, time, urllib.request, urllib.error
+          REF = os.environ['PROJECT_REF']; URL = f'https://{REF}.supabase.co'
+          SITE = 'https://technapesa.co.ke'
+          def http(method, url, body=None, headers=None):
+              data = None if body is None else json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+              try:
+                  r = urllib.request.urlopen(req); t = r.read(); return r.status, (json.loads(t) if t else None)
+              except urllib.error.HTTPError as e:
+                  t = e.read()
+                  try: return e.code, json.loads(t)
+                  except Exception: return e.code, t.decode()[:300]
+          mgmt = {'Authorization': 'Bearer ' + os.environ['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'}
+          _, keys = http('GET', f'https://api.supabase.com/v1/projects/{REF}/api-keys?reveal=true', headers=mgmt)
+          anon = next(k['api_key'] for k in keys if k['name'] == 'anon'); svc = next(k['api_key'] for k in keys if k['name'] == 'service_role')
+          print(f'::add-mask::{anon}'); print(f'::add-mask::{svc}')
+          def sql(q):
+              s, r = http('POST', f'https://api.supabase.com/v1/projects/{REF}/database/query', {'query': q}, mgmt)
+              if s >= 300: raise SystemExit(f'sql failed: {r}')
+              return r
+          admin = {'apikey': svc, 'Authorization': 'Bearer ' + svc, 'Content-Type': 'application/json'}
+          visitor = {'apikey': anon, 'Authorization': 'Bearer ' + anon, 'Content-Type': 'application/json', 'Origin': SITE}
+          run = str(int(time.time()))[-6:]
+          uid = None; passed, failed = 0, []
+          def check(cond, what, detail=''):
+              global passed
+              if cond: passed += 1; print('PASS', what)
+              else: failed.append(what); print('FAIL', what, detail)
+          try:
+              pw = secrets.token_urlsafe(18); print(f'::add-mask::{pw}')
+              email = f'drop-test-{run}@technapesa.co.ke'
+              s, u = http('POST', f'{URL}/auth/v1/admin/users', {'email': email, 'password': pw, 'email_confirm': True, 'user_metadata': {'full_name': 'Test Drop', 'accepted_terms': True}}, admin)
+              if s >= 300: raise SystemExit(f'could not create test account: {u}')
+              uid = u['id']
+              s, t = http('POST', f'{URL}/auth/v1/token?grant_type=password', {'email': email, 'password': pw}, {'apikey': anon, 'Content-Type': 'application/json'})
+              tok = t['access_token']; print(f'::add-mask::{tok}')
+              member = {'apikey': anon, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json', 'Origin': SITE}
+              uname = f'tst_drop{run}'
+              s, r = http('POST', f'{URL}/rest/v1/rpc/vibe_join', {'p_username': uname, 'p_adult': True}, member)
+              check(s < 300, 'test member joins Tukachap (notification topics still accepted)', r)
+
+              s, r = http('POST', f'{URL}/functions/v1/drop-submit', {'username': uname, 'message': 'Live test: you make our class laugh.', 'sender_mode': 'anonymous'}, visitor)
+              check(s == 200 and isinstance(r, dict) and r.get('success'), 'a visitor sends an anonymous Drop without an account', r)
+              token = r.get('reply_token', '') if isinstance(r, dict) else ''
+              check(len(token) == 64, 'the visitor gets a private reply token')
+
+              s, rows = http('GET', f'{URL}/rest/v1/vibe_drops?select=id,sender_mode,sender_user_id,message,status', None, member)
+              check(s == 200 and len(rows) == 1 and rows[0]['sender_mode'] == 'anonymous' and rows[0]['sender_user_id'] is None, 'the member sees it in their inbox as anonymous', rows)
+              drop_id = rows[0]['id'] if s == 200 and rows else ''
+
+              s, rows = http('GET', f'{URL}/rest/v1/vibe_drops?select=id', None, {'apikey': anon, 'Authorization': 'Bearer ' + anon})
+              check(s == 200 and rows == [], 'visitors cannot read anyone\'s Drops', rows)
+
+              s, r = http('POST', f'{URL}/functions/v1/drop-reply', {'action': 'reply', 'drop_id': drop_id, 'message': 'Live test reply, thank you!'}, member)
+              check(s == 200, 'the member replies privately', r)
+
+              s, r = http('POST', f'{URL}/functions/v1/drop-reply', {'action': 'read', 'token': token}, visitor)
+              replies = r.get('replies', []) if isinstance(r, dict) else []
+              check(s == 200 and any(x.get('author_role') == 'recipient' for x in replies), 'the visitor reads the reply with the private link', r)
+
+              s, r = http('POST', f'{URL}/functions/v1/drop-submit', {'username': uname, 'message': 'x', 'sender_mode': 'anonymous'}, {**visitor, 'Origin': 'https://example.com'})
+              check(s == 403, 'sends from other websites are refused', r)
+          finally:
+              if uid:
+                  sql(f"delete from public.vibe_drops where recipient_id = '{uid}'")
+                  http('DELETE', f'{URL}/auth/v1/admin/users/{uid}', None, admin)
+                  left = sql(f"select count(*) n from auth.users where email = 'drop-test-{run}@technapesa.co.ke'")
+                  print('test account removed' if left and left[0]['n'] == 0 else f'cleanup left account: {left}')
+          print(f'\n{passed} passed, {len(failed)} failed')
+          if failed: raise SystemExit('failed: ' + '; '.join(failed))
+          PY
