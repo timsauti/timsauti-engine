@@ -1,5 +1,5 @@
 name: TECH na PESA server functions
-# Deploys the Supabase Edge Functions in technapesa-db/supabase/functions (Paystack payments) to the live project
+# Deploys the Supabase Edge Functions in technapesa-db/supabase/functions (Paystack payments, Tukachap Drop) to the live project
 # and passes the Paystack secret key from this repository's secrets to Supabase. The key is never printed.
 # Secrets used: SUPABASE_ACCESS_TOKEN, PAYSTACK_SECRET_KEY (added by the owner).
 on:
@@ -34,6 +34,14 @@ jobs:
           else
             echo "PAYSTACK_SECRET_KEY is not set in this repository yet; payments stay switched off"
           fi
+      - name: Tukachap Drop secret (created once, random, never printed)
+        env: { SUPABASE_ACCESS_TOKEN: '${{ secrets.SUPABASE_ACCESS_TOKEN }}' }
+        run: |
+          if npx -y supabase@2.122.0 secrets list --project-ref "$PROJECT_REF" 2>/dev/null | grep -q DROP_FINGERPRINT_SECRET; then
+            echo "Drop fingerprint secret already set"
+          else
+            npx -y supabase@2.122.0 secrets set --project-ref "$PROJECT_REF" DROP_FINGERPRINT_SECRET="$(openssl rand -hex 32)" >/dev/null && echo "Drop fingerprint secret created"
+          fi
       - name: Deploy functions
         env: { SUPABASE_ACCESS_TOKEN: '${{ secrets.SUPABASE_ACCESS_TOKEN }}' }
         run: |
@@ -45,3 +53,7 @@ jobs:
           npx -y supabase@2.122.0 functions deploy staff-alert --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy budget-plan --project-ref "$PROJECT_REF" --use-api
           npx -y supabase@2.122.0 functions deploy paystack-webhook --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
+          # Tukachap Drop (Confessions): open to visitors; each function checks its own permissions (anonymous sends, reply tokens, recipient sessions)
+          npx -y supabase@2.122.0 functions deploy drop-submit --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
+          npx -y supabase@2.122.0 functions deploy drop-reply --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
+          npx -y supabase@2.122.0 functions deploy drop-block --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
