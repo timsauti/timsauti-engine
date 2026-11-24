@@ -57,6 +57,7 @@ jobs:
               s, r = http('POST', f'{URL}/rest/v1/rpc/vibe_join', {'p_username': uname, 'p_adult': True}, member)
               check(s < 300, 'test member joins Tukachap (notification topics still accepted)', r)
 
+              sql(f"update public.profiles set phone = '+254700000000' where id = '{uid}'")
               s, r = http('POST', f'{URL}/functions/v1/drop-submit', {'username': uname, 'message': 'Live test: you make our class laugh.', 'sender_mode': 'anonymous'}, visitor)
               check(s == 200 and isinstance(r, dict) and r.get('success'), 'a visitor sends an anonymous Drop without an account', r)
               token = r.get('reply_token', '') if isinstance(r, dict) else ''
@@ -66,6 +67,9 @@ jobs:
               check(s == 200 and len(rows) == 1 and rows[0]['sender_mode'] == 'anonymous' and rows[0]['sender_user_id'] is None, 'the member sees it in their inbox as anonymous', rows)
               drop_id = rows[0]['id'] if s == 200 and rows else ''
 
+              q = sql(f"select message from public.sms_outbox where reason = 'drop_alert' and user_id = '{uid}'")
+              check(len(q) == 1 and 'Live test' not in q[0]['message'] and 'vibe/drops' in q[0]['message'], 'an SMS alert is queued for the member, without the message text', q)
+              sql(f"delete from public.sms_outbox where user_id = '{uid}'")
               s, rows = http('GET', f'{URL}/rest/v1/vibe_drops?select=id', None, {'apikey': anon, 'Authorization': 'Bearer ' + anon})
               check((s == 200 and rows == []) or s in (401, 403), 'visitors cannot read anyone\'s Drops', rows)
 
@@ -80,6 +84,7 @@ jobs:
               check(s == 403, 'sends from other websites are refused', r)
           finally:
               if uid:
+                  sql(f"delete from public.sms_outbox where user_id = '{uid}'")
                   sql(f"delete from public.vibe_drops where recipient_id = '{uid}'")
                   http('DELETE', f'{URL}/auth/v1/admin/users/{uid}', None, admin)
                   left = sql(f"select count(*) n from auth.users where email = 'drop-test-{run}@technapesa.co.ke'")
