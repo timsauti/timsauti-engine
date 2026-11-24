@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   let payload: { drop_id?: unknown };
   try { payload = await req.json(); } catch { return respond(400, { error: "Invalid request." }, origin); }
   const dropId = typeof payload.drop_id === "string" ? payload.drop_id : "";
-  if (!/^[0-9a-f-]{36}$/i.test(dropId)) return respond(400, { error: "Invalid Drop." }, origin);
+  if (!/^[0-9a-f-]{36}$/i.test(dropId)) return respond(400, { error: "Invalid message." }, origin);
 
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: userData, error: userError } = await db.auth.getUser(accessToken);
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   const { data: drop } = await db.from("vibe_drops")
     .select("id,recipient_id,sender_user_id")
     .eq("id", dropId).eq("recipient_id", me).maybeSingle();
-  if (!drop) return respond(404, { error: "This Drop is not in your inbox." }, origin);
+  if (!drop) return respond(404, { error: "This message is not in your inbox." }, origin);
 
   const { data: abuse } = await db.from("vibe_drop_abuse_metadata")
     .select("fingerprint_hash")
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   }
 
   if (!abuse?.fingerprint_hash && !drop.sender_user_id) {
-    return respond(409, { error: "This older anonymous Drop has no blockable sender record." }, origin);
+    return respond(409, { error: "This older anonymous message cannot be blocked." }, origin);
   }
 
   if (drop.sender_user_id && drop.sender_user_id !== me) {

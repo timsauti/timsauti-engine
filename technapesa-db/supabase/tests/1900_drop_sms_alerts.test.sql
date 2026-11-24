@@ -22,17 +22,17 @@ select pg_temp.as_user('00000000-0000-0000-0000-000000d50b02'); select public.vi
 reset role;
 
 -- Drops are written by the drop-submit function with the service key
-insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Secret one: you are kind');
+insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Hidden one: you are kind');
 select pg_temp.expect((select count(*) from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') = 1, 'a member with a phone gets an SMS alert for a new Drop');
 select pg_temp.expect((select phone from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') = '+254712345678', 'the alert goes to the phone on their account');
-select pg_temp.expect((select message from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') not ilike '%secret%', 'the SMS never contains the Drop text');
-select pg_temp.expect((select message from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') ilike '%technapesa.co.ke/vibe/drops/%', 'the SMS links to the inbox');
+select pg_temp.expect((select message from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') not ilike '%hidden%', 'the SMS never contains the Drop text');
+select pg_temp.expect((select message from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') ilike '%technapesa.co.ke/vibe/drops/%' and (select message from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01' order by id limit 1) ilike '%secret message%', 'the SMS says secret message and links to the inbox');
 
-insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Secret two');
+insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Hidden two');
 select pg_temp.expect((select count(*) from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') = 1, 'a second Drop within 3 hours sends no second SMS');
 
 update public.vibe_drop_settings set last_sms_alert_at = now() - interval '4 hours' where user_id = '00000000-0000-0000-0000-000000d50a01';
-insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Secret three');
+insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Hidden three');
 select pg_temp.expect((select count(*) from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') = 2, 'after 3 hours the next Drop sends a new SMS');
 
 insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50b02', 'anonymous', 'Hello');
@@ -45,7 +45,7 @@ select public.vibe_drop_sms_set(false);
 select pg_temp.expect(not (public.vibe_drop_sms_status()->>'on')::boolean, 'the member can switch SMS alerts off');
 reset role;
 update public.vibe_drop_settings set last_sms_alert_at = null where user_id = '00000000-0000-0000-0000-000000d50a01';
-insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Secret four');
+insert into public.vibe_drops (recipient_id, sender_mode, message) values ('00000000-0000-0000-0000-000000d50a01', 'anonymous', 'Hidden four');
 select pg_temp.expect((select count(*) from public.sms_outbox where reason = 'drop_alert' and user_id = '00000000-0000-0000-0000-000000d50a01') = 2, 'no SMS once switched off');
 
 set role anon; select set_config('request.jwt.claims', '{"role":"anon"}', false);

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const fingerprintSecret = Deno.env.get("DROP_FINGERPRINT_SECRET");
   if (!url || !serviceKey || !fingerprintSecret) {
-    return reply(503, { error: "Drop submissions are temporarily unavailable." }, origin);
+    return reply(503, { error: "Secret messages are temporarily unavailable. Please try again soon." }, origin);
   }
 
   let payload: { username?: unknown; message?: unknown; sender_mode?: unknown };
@@ -64,12 +64,12 @@ Deno.serve(async (req) => {
   if (senderMode === "identified") {
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!token) return reply(401, { error: "Sign in to send an identified Drop." }, origin);
+    if (!token) return reply(401, { error: "Log in to send a message with your name." }, origin);
     const { data: userData, error: userError } = await db.auth.getUser(token);
     if (userError || !userData.user) return reply(401, { error: "Please sign in again." }, origin);
     senderId = userData.user.id;
     const { data: sender } = await db.from("vibe_profiles").select("user_id,status").eq("user_id", senderId).maybeSingle();
-    if (!sender || sender.status !== "active") return reply(403, { error: "Join Tukachap before sending an identified Drop." }, origin);
+    if (!sender || sender.status !== "active") return reply(403, { error: "Join Tukachap to send a message with your name." }, origin);
   } else if (req.headers.has("authorization")) {
     // Anonymous mode must not accidentally attach a logged-in identity.
     senderId = null;
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     .eq("username", username)
     .eq("status", "active")
     .maybeSingle();
-  if (!recipient) return reply(404, { error: "This Drop link is unavailable." }, origin);
+  if (!recipient) return reply(404, { error: "This secret message link is unavailable." }, origin);
 
   const { data: settings } = await db.from("vibe_drop_settings")
     .select("enabled,allow_anonymous,allow_identified")
@@ -89,10 +89,10 @@ Deno.serve(async (req) => {
   const prefs = settings ?? { enabled: true, allow_anonymous: true, allow_identified: true };
   if (!prefs.enabled || (senderMode === "anonymous" && !prefs.allow_anonymous) ||
       (senderMode === "identified" && !prefs.allow_identified)) {
-    return reply(403, { error: "This member is not accepting this type of Drop." }, origin);
+    return reply(403, { error: "This member is not accepting this type of message." }, origin);
   }
   if (senderId && senderId === recipient.user_id) {
-    return reply(400, { error: "You cannot send a Drop to yourself." }, origin);
+    return reply(400, { error: "You cannot send a secret message to yourself." }, origin);
   }
 
   // Use a keyed digest so raw IP addresses are never stored. Require a private secret.
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     await db.rpc("notify", {
       p_user: recipient.user_id,
       p_topic: "messages",
-      p_title: "You received a new private Drop",
+      p_title: "You received a new secret message",
       p_body: "Open Tukachap to read your private message.",
       p_link: "/vibe/drops/",
     });

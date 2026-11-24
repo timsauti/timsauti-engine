@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         await db.rpc("notify", {
           p_user: notifyUser,
           p_topic: "messages",
-          p_title: actor === "sender" ? "Someone replied to your Drop" : "You have a private Drop reply",
+          p_title: actor === "sender" ? "Someone replied to your secret message" : "You have a new reply to a secret message",
           p_body: "Open Tukachap to read your private reply.",
           p_link: actor === "sender" ? "/vibe/drops/" : "/vibe/drops/",
         });
