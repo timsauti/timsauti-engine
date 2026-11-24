@@ -89,6 +89,10 @@ jobs:
                   http('DELETE', f'{URL}/auth/v1/admin/users/{uid}', None, admin)
                   left = sql(f"select count(*) n from auth.users where email = 'drop-test-{run}@technapesa.co.ke'")
                   print('test account removed' if left and left[0]['n'] == 0 else f'cleanup left account: {left}')
+          cfg = sql("select value->>'on' as on_, value->>'provider' as provider, (value->>'sender_id') is not null as has_sender from public.site_settings where key = 'sms.notifications'")
+          week = sql("select status, count(*) n from public.sms_outbox where created_at > now() - interval '7 days' group by status order by status")
+          print('SMS STATUS: sending on =', cfg[0]['on_'] if cfg else None, '| provider =', cfg[0]['provider'] if cfg else None, '| sender set =', cfg[0]['has_sender'] if cfg else None)
+          print('SMS LAST 7 DAYS:', ', '.join(f"{r['status']} {r['n']}" for r in week) or 'none')
           print(f'\n{passed} passed, {len(failed)} failed')
           if failed: raise SystemExit('failed: ' + '; '.join(failed))
           PY
