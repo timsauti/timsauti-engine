@@ -507,6 +507,7 @@ for (const b of KENYA_BOOKS.filter((k) => !S.accaBook || k.name.toLowerCase() ==
   const legs = Object.values(one).sort((a, c) => c.ev - a.ev).slice(0, num(S.accaMaxLegs, 6));
   if (legs.length < 2) continue; // doubles allowed
   const odds = legs.reduce((t, x) => t * x.odds, 1), pr = legs.reduce((t, x) => t * x.p, 1);
+  if (odds < num(S.accaMinOdds, 0)) continue; // owner's rule: a multibet must pay at least this
   if (!acca || pr * odds > acca.pr * acca.odds) acca = { book: b.name, legs: legs.sort((a, c) => a.date - c.date), odds, pr };
 }
 // ambitious slip: 10 to 20 odds, at most twice a week, Friday to Sunday, from games not in the daily multibet

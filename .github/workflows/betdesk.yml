@@ -49,7 +49,7 @@ jobs:
           TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
           JACKPOT_GAMES: ${{ github.event.inputs.jackpot_games || '' }}
           ACCA_MIN_P: ${{ github.event.inputs.acca_min_p || '0.7' }}
-          ACCA_MAX_LEGS: '2'
+          ACCA_MAX_LEGS: '3'
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
           HOURS_AHEAD: ${{ github.event.inputs.hours_ahead || '30' }}
         run: set -a; [ -f vault/private.env ] && . vault/private.env; set +a; node betdesk/run.js > vault/data/logs/betdesk.log 2>&1

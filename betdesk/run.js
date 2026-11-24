@@ -24,7 +24,8 @@ const settings = {
   forceBig: env.FORCE_BIG === '1',
   accaBook: env.ACCA_BOOK || '', // owner's app for the daily multibet
   accaMinP: Number(env.ACCA_MIN_P || 0.7),
-  accaMaxLegs: Number(env.ACCA_MAX_LEGS || 2), // owner's rule from 24 Nov: doubles at most
+  accaMaxLegs: Number(env.ACCA_MAX_LEGS || 3), // owner's rule from 24 Nov: 3 legs at most
+  accaMinOdds: 3, // owner's rule from 24 Nov: a multibet must total at least 3 odds
   accaStakeKES: Number(env.ACCA_STAKE_KES || 100),
   flatStakeKES: Number(env.FLAT_STAKE_KES || 0),
   bigSlip: false, // ambitious slips paused (owner's rule, 24 Nov)
