@@ -304,7 +304,7 @@ async function gemini(q) {
         body: { contents: [{ role: 'user', parts: [{ text: q }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.1 } } });
       const text = ((((r.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || '').join('');
       if (text) return text;
-    } catch (e) { gemini.err = `${model}: ${String(e.message).slice(0, 90)}`; }
+    } catch (e) { gemini.err = (gemini.err ? gemini.err + " || " : "") + `${model}: ${String(e.message).replace(/\s+/g, " ").slice(0, 260)}`; }
   }
   return '';
 }
@@ -556,7 +556,7 @@ if ((S.geminiKey || S.jackpotGames) && S.jackpots !== false) {
   } else {
     try { list = jsonArray(await gemini(q)); } catch (e) {}
   }
-  if (!list && S.debug) notes.push(`Jackpot search: no list (${gemini.err || 'no reply'})`);
+  if (!list && S.debug) notes.push(`Jackpot search: no list (${String(gemini.err || 'no reply').slice(0, 1200)})`);
   const upcomingAll = all.filter((m) => m.upcoming && m.date > NOW && m.date < NOW + 8 * 864e5);
   for (const jp of list || []) {
     const games = (jp.games || []).filter((g) => g && g.home && g.away);
