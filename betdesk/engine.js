@@ -450,10 +450,14 @@ if (shortlist.length) {
     const blocks = [];
     for (const [i, p] of shortlist.entries()) {
       let heads = [];
-      try {
-        const xml = await http({ url: 'https://news.google.com/rss/search', qs: { q: `"${p.home}" "${p.away}" team news when:4d`, hl: 'en-GB', gl: 'GB', ceid: 'GB:en' }, json: false, timeout: 15000 });
-        heads = [...String(xml).matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>/g)].slice(0, 8).map((m) => `- ${decode(m[1])} (${m[2].slice(5, 16)})`);
-      } catch (e) {}
+      for (const q of [`"${p.home}" "${p.away}" when:4d`, `"${p.homeFull || p.home}" injury OR injured OR "ruled out" OR suspended when:4d`, `"${p.awayFull || p.away}" injury OR injured OR "ruled out" OR suspended when:4d`]) {
+        try {
+          const xml = await http({ url: 'https://news.google.com/rss/search', qs: { q, hl: 'en-GB', gl: 'GB', ceid: 'GB:en' }, json: false, timeout: 15000 });
+          heads = heads.concat([...String(xml).matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>/g)].slice(0, 6).map((m) => `- ${decode(m[1])} (${m[2].slice(5, 16)})`));
+        } catch (e) {}
+        await sleep(250);
+      }
+      heads = [...new Set(heads)].slice(0, 16);
       blocks.push(`${i + 1}. ${p.home} v ${p.away} (${p.league}). Pick: ${p.label}.\nHeadlines from the last four days:\n${heads.join('\n') || '- none found'}`);
       await sleep(300);
     }
