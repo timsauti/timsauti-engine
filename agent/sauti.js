@@ -148,7 +148,11 @@ function bankPhoto(query, dir) {
       // the name Kenyans use for them in headlines ("Uhuru", "Rigathi", "Kalonzo") counts as well; with two leaders named, the first one named wins
       const CALL = { uhuru: 'uhuru kenyatta', rigathi: 'rigathi gachagua', kalonzo: 'kalonzo musyoka', wavinya: 'wavinya ndeti', mutula: 'mutula kilonzo junior', sakaja: 'johnson sakaja', matiangi: 'fred matiangi', sifuna: 'edwin sifuna' };
       const toks = q.split(/\s+/);
+      // owner, 25 Nov: "Kimani Kuria" took the bank photo of Moses Kuria. A surname alone counts only when the word before it is a title
+      // or that same person's own first name, never another person's first name.
+      const TITLES = new Set(['governor', 'gov', 'senator', 'sen', 'mp', 'mca', 'cs', 'ps', 'president', 'deputy', 'dp', 'dr', 'hon', 'mr', 'mrs', 'ms', 'chair', 'chairman', 'chairperson', 'speaker', 'leader', 'minister', 'cabinet', 'secretary', 'former', 'ex', 'the', 'by', 'and', 'of', 'to', 'says', 'said']);
       const at = (n) => { const sur = n.split(' ').pop(); let i = sur.length >= 4 && people.filter((o) => o.split(' ').pop() === sur).length === 1 ? toks.indexOf(sur) : -1;
+        if (i > 0) { const prev = toks[i - 1]; if (prev && !TITLES.has(prev) && !n.split(' ').includes(prev)) i = -1; }
         for (const [c, full] of Object.entries(CALL)) if (full === n) { const j = toks.indexOf(c); if (j >= 0 && (i < 0 || j < i)) i = j; } return i; };
       const cands = people.map((n) => [n, at(n)]).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1]);
       if (cands.length) pick = all.find((v) => nameWords(v.name).join(' ') === cands[0][0]);
