@@ -440,6 +440,33 @@ async function articlePhoto(link, outlet, dir, gemini, story, sensitive) {
     return { file, credit: 'Photo: ' + String(outlet || 'news report').replace(/^the /i, 'The ').slice(0, 40), wide: dm2 ? { w: +dm2[1], h: +dm2[2] } : { w, h: ht } };
   } catch (e) { return null; }
 }
+// owner, 26 Nov: two people in one story are shown together. Two portraits side by side, each framed around the upper body,
+// as one wide picture that the poster shows whole above the headline (no face is ever cut at an edge).
+function joinTwo(a, b, dir) {
+  try {
+    let ff = 'ffmpeg'; try { const st = require('ffmpeg-static'); if (st && fs.existsSync(st)) ff = st; } catch (e) {}
+    fs.mkdirSync(path.join(dir, 'photos'), { recursive: true });
+    const file = path.join(dir, 'photos', 'p_pair_' + crypto.createHash('md5').update(a.file + '|' + b.file).digest('hex').slice(0, 10) + '.jpg');
+    const fit = 'scale=640:800:force_original_aspect_ratio=increase,crop=640:800:(iw-640)/2:(ih-800)/5';
+    require('child_process').execFileSync(ff, ['-v', 'error', '-y', '-i', a.file, '-i', b.file, '-filter_complex', `[0:v]${fit},pad=648:800:0:0:white[l];[1:v]${fit}[r];[l][r]hstack=inputs=2`, '-frames:v', '1', '-q:v', '3', file], { timeout: 30000 });
+    const credit = [a.credit, b.credit].map((c) => String(c || '').split(/[,/]/)[0].trim()).filter(Boolean).join('; ').slice(0, 60);
+    return { file, credit, wide: { w: 1288, h: 800 }, pair: true };
+  } catch (e) { return null; }
+}
+// both people from the leaders bank only (no internet): used while designing a poster
+function pairBank(names, dir) {
+  const ph = []; for (const n of (names || []).slice(0, 3)) { const b = bankPhoto(n, dir); if (b && !ph.some((x) => x.person === b.person)) ph.push(b); if (ph.length === 2) break; }
+  return ph.length === 2 ? joinTwo(ph[0], ph[1], dir) : null;
+}
+// both people from the bank, or from recent news reports when the bank has no photo of one of them
+async function pairPhoto(names, dir, gemini) {
+  const ph = [];
+  for (const n of (names || []).slice(0, 3)) {
+    let b = bankPhoto(n, dir); if (!b && gemini) { try { b = await leaderFromNews(n, gemini); if (b) b.person = n; } catch (e) {} }
+    if (b && !ph.some((x) => x.person === b.person)) ph.push(b); if (ph.length === 2) break;
+  }
+  return ph.length === 2 ? joinTwo(ph[0], ph[1], dir) : null;
+}
 // the outlet's photo for a story: its own page first, then the same story on other outlets (Google News links cannot be opened)
 async function storyPhoto(it, others, dir, gemini, story, sensitive) {
   for (const o of [it].concat(others).slice(0, 4)) {
@@ -605,7 +632,7 @@ Return JSON: {"pick":[{"i":number,"sensitive":true|false,"feature":true|false}]}
 REPORT (${it.feed}${it.source ? ', ' + it.source : ''}):
 TITLE: ${it.title}
 ${factsText}
-Return JSON: {"label":"${feature ? 'FEATURE' : 'BREAKING only if this is a sudden major event that happened within the last few hours (a death of a known person, a fatal accident, a disaster, a major arrest or court verdict, a resignation or sacking of a top official); otherwise NEWS, UPDATE, DEVELOPMENT or ALERT'}","card":"the news in at most 12 words for the poster","caption":"${feature ? 'a full feature story of 600 to 1000 characters in short paragraphs that readers can follow from start to end: open with a strong scene or moment from the story; then who the person or subject is and where they come from; the challenges or background; how things happened step by step; where things stand now with the numbers and details the report gives; what it means for ordinary Kenyans or the lesson in it; end with a question that readers will want to answer from their own view or experience. Use every useful detail the report gives, but never pad or repeat yourself, and never add anything the report does not say' : 'short and complete: 350 to 500 characters in short paragraphs; the key fact first, then every important detail the report gives (who, what, where, when, and what happens next); end with a simple question to readers only when it fits: it must ask for their view or experience, never quiz them on a fact the post already gives, and never follow a death, tragedy, crime or court case'}","image_query":"2 to 5 words for the photo: for a politics or government story, or the death or achievement of a public figure, the full name of that public figure; for anything else a PLACE or THING (a town, road, hospital building, school, river, crop). Never a private person, and never a private person in a crime, accident or death story","stale":true|false,"who":"the full name and role of the main person or body, copied from the report, or empty if the report does not say","where":"the exact place named in the report, or empty if it does not say","claims":[{"claim":"...","quote":"the exact sentence copied from the report"}]}` });
+Return JSON: {"label":"${feature ? 'FEATURE' : 'BREAKING only if this is a sudden major event that happened within the last few hours (a death of a known person, a fatal accident, a disaster, a major arrest or court verdict, a resignation or sacking of a top official); otherwise NEWS, UPDATE, DEVELOPMENT or ALERT'}","people":["full name of every named person the story is about, for a meeting or visit both sides, at most 3"],"card":"the news in at most 12 words for the poster","caption":"${feature ? 'a full feature story of 600 to 1000 characters in short paragraphs that readers can follow from start to end: open with a strong scene or moment from the story; then who the person or subject is and where they come from; the challenges or background; how things happened step by step; where things stand now with the numbers and details the report gives; what it means for ordinary Kenyans or the lesson in it; end with a question that readers will want to answer from their own view or experience. Use every useful detail the report gives, but never pad or repeat yourself, and never add anything the report does not say' : 'short and complete: 350 to 500 characters in short paragraphs; the key fact first, then every important detail the report gives (who, what, where, when, and what happens next); end with a simple question to readers only when it fits: it must ask for their view or experience, never quiz them on a fact the post already gives, and never follow a death, tragedy, crime or court case'}","image_query":"2 to 5 words for the photo: for a politics or government story, or the death or achievement of a public figure, the full name of that public figure; for anything else a PLACE or THING (a town, road, hospital building, school, river, crop). Never a private person, and never a private person in a crime, accident or death story","stale":true|false,"who":"the full name and role of the main person or body, copied from the report, or empty if the report does not say","where":"the exact place named in the report, or empty if it does not say","claims":[{"claim":"...","quote":"the exact sentence copied from the report"}]}` });
       const src = { text: factsText };
       if (borrowed) {   // the borrowed report must be about the very same event as the headline: same dates, places and numbers
         let same = { same: false };
@@ -621,13 +648,23 @@ Return JSON: {"label":"${feature ? 'FEATURE' : 'BREAKING only if this is a sudde
       const story = clean(d.card || it.title);
       const others = all.filter((x) => x !== it && sameStory(x.title, it.title) && !/news\.google\./.test(x.link) && (x.source || x.feed) !== (it.source || it.feed));
       // a leader has one bank photo: when it was on a recent poster, the photo the outlet published with this story goes first (owner, 10 Nov: no photo over and over)
-      const lead = bankPhoto(clean(d.image_query || ''), dir) || bankPhoto(story, dir);
-      const leadSeen = lead ? recentUse(dir)[path.basename(lead.file)] : undefined;
-      const photo = (lead && !(leadSeen < MIN_GAP) ? lead : null)
-        || await storyPhoto(it, others, dir, gemini, story, !!p.sensitive) || lead
-        || await commonsPhoto(clean(d.image_query || ''), dir, gemini, story);
+      // owner, 26 Nov (Mosiria meets Kalonzo went out on an old photo of Kalonzo alone): a story about two or more people never
+      // carries a photo of just one of them. The outlet's own photo of them together goes first; else both people side by side.
+      const people = [...new Set((Array.isArray(d.people) ? d.people : []).map((x) => clean(String(x || ''))).filter((x) => x.split(/\s+/).length >= 2))].slice(0, 3);
+      let photo = null;
+      if (people.length >= 2) {
+        photo = await storyPhoto(it, others, dir, gemini, story + ' (approve only a photo that shows ' + people.slice(0, 2).join(' and ') + ' together)', !!p.sensitive)
+          || await pairPhoto(people, dir, gemini)
+          || await commonsPhoto(clean(d.image_query || ''), dir, gemini, story);
+      } else {
+        const lead = bankPhoto(clean(d.image_query || ''), dir) || bankPhoto(story, dir);
+        const leadSeen = lead ? recentUse(dir)[path.basename(lead.file)] : undefined;
+        photo = (lead && !(leadSeen < MIN_GAP) ? lead : null)
+          || await storyPhoto(it, others, dir, gemini, story, !!p.sensitive) || lead
+          || await commonsPhoto(clean(d.image_query || ''), dir, gemini, story);
+      }
       news.push({ key: it.key, kind: 'news', status: auto ? 'APPROVED' : 'SKIPPED_UNTRUSTED', auto, sensitive: !!p.sensitive, local: it.local, at: new Date().toISOString(), title: it.title, sourceName: it.source || it.feed, sourceLink: it.link,
-        label: breaking(fresh3h(it, clean(d.label || 'NEWS'))).label, card: story, caption: breaking(fresh3h(it, clean(d.label || 'NEWS')), clean(d.caption || '')).caption, heat: it.heat || undefined, photo: photo ? path.relative(path.join(dir, '..', '..'), photo.file) : null, photoCredit: photo ? photo.credit : '', photoWide: photo && photo.wide ? photo.wide : null });
+        label: breaking(fresh3h(it, clean(d.label || 'NEWS'))).label, card: story, caption: breaking(fresh3h(it, clean(d.label || 'NEWS')), clean(d.caption || '')).caption, heat: it.heat || undefined, people: people.length >= 2 ? people : undefined, photo: photo ? path.relative(path.join(dir, '..', '..'), photo.file) : null, photoCredit: photo ? photo.credit : '', photoWide: photo && photo.wide ? photo.wide : null });
       n++;
     } catch (e) {}
   }
@@ -847,4 +884,4 @@ Return JSON: {"topic":"three to six words","label":"POLITICS or LEADERSHIP or EC
     photo: photo ? path.relative(path.join(dir, '..', '..'), photo.file) : null, photoCredit: photo ? photo.credit : '' };
 }
 
-module.exports = { placePhoto, storyPhotos, leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };
+module.exports = { pairPhoto, pairBank, joinTwo, placePhoto, storyPhotos, leaderBank, imgDims, official, breaking, recentUse, leaderFromNews, DW, sameDW, sameStoryText, gnResolve, articleText, draftKamba, kambaNews, topicPhoto, articlePhoto, storyPhoto, bankPhoto, research, checked, writeTalk, commonsPhoto, writeDidYouKnow, writeBusinessTip, draftProfile, writeOwn, findNews, isSautiTip, saveTip, draftTips, sendDrafts, decide, takeApproved, SYSTEM_S };

@@ -170,7 +170,9 @@ function design(page, post, posts) {
     const s = post.sauti || {}; layout = 'sauti';
     // owner rule (3 Nov): nine in ten posts carry a photo; a story with no photo of its own takes a fitting photo from the topic bank
     // owner rule (4 Nov): no graphic without a photo. A named leader gets their own photo; anything else a fitting topic photo
-    if (!s.photo && !s.designed) { try { const bp = SAUTI.bankPhoto([s.card, post.headline].join(' '), dataDir('sauti')); if (bp && !(s.avoid || []).includes(path.basename(bp.file))) { s.photo = path.relative(ROOT, bp.file); s.credit = bp.credit || ''; s.wide = bp.wide || null; post.sauti = s; } } catch (e) {} }
+    // owner, 26 Nov: a story about two or more people never takes a bank photo of just one of them; both side by side instead
+    if (!s.photo && !s.designed && Array.isArray(s.people) && s.people.length >= 2) { try { const pp = SAUTI.pairBank(s.people, dataDir('sauti')); if (pp) { s.photo = path.relative(ROOT, pp.file); s.credit = pp.credit || ''; s.wide = pp.wide; post.sauti = s; } } catch (e) {} }
+    if (!s.photo && !s.designed && !(Array.isArray(s.people) && s.people.length >= 2)) { try { const bp = SAUTI.bankPhoto([s.card, post.headline].join(' '), dataDir('sauti')); if (bp && !(s.avoid || []).includes(path.basename(bp.file))) { s.photo = path.relative(ROOT, bp.file); s.credit = bp.credit || ''; s.wide = bp.wide || null; post.sauti = s; } } catch (e) {} }
     if (!s.photo && !s.designed) {
       // owner rule (10 Nov): no photo over and over. The photo least recently on a poster wins, and one on the last 200 posters is not repeated while another fits
       const tp = SAUTI.topicPhoto([s.photoHint || '', s.label, s.card, post.headline, post.caption].join(' '), dataDir('sauti'), { ago: SAUTI.recentUse(dataDir('sauti'), posts.filter((q) => q !== post)), avoid: s.avoid || [] });
@@ -395,7 +397,7 @@ async function sautiNewsNow(page, posts, notes) {
     const item = SAUTI.takeApproved(dataDir('sauti'), ['tip', 'news'], urgentOnly || doneToday + (i - booked) >= allowedNow); if (!item) break;
     const post = { id: 'p_' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'), page: 'sauti', category: 'N', topic: (item.title || item.text || '').slice(0, 120), headline: clean(item.card || '').slice(0, 160),
       cardText: '', reference: '', caption: clean(item.caption || ''), hashtags: [], scheduledAt: iso(when), createdAt: iso(Date.now()), status: 'PUBLISHING', fromNews: item.key, heat: item.heat || undefined, auto: true, source: item.sourceLink, previewed: true,
-      sauti: { label: item.label, card: item.card, sub: '', photo: item.photo || null, credit: item.photoCredit || '', wide: item.photoWide || null } };
+      sauti: { label: item.label, card: item.card, sub: '', people: item.people || undefined, photo: item.photo || null, credit: item.photoCredit || '', wide: item.photoWide || null } };
     post.image = design(page, post, posts); posts.push(post); save(page.key, posts);
     const qc = await finalCheck(page, post);
     if (!qc.pass && post.sauti && post.sauti.photo && /photo|picture|image|logo|watermark/i.test((qc.problems || []).join(' '))) {   // a wrong photo: try once more as a clean text poster
