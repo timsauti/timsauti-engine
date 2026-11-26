@@ -1,0 +1,32 @@
+name: Pacer (keeps the agents on time)
+# GitHub often skips scheduled runs on free accounts (26 Nov: news ran only once in 16 hours). This workflow keeps itself
+# alive and starts the hourly news check, and the full Facebook agent when it has not run for 6 hours, between 6am and
+# 10pm Nairobi time. Each pacer run lasts about 5 hours and then starts the next one. The scheduled times below are only
+# a backup to restart the chain if it ever breaks; a second pacer simply waits its turn.
+on:
+  schedule:
+    - cron: '20 3,9,15 * * *'
+  workflow_dispatch: {}
+concurrency: { group: pacer, cancel-in-progress: false }
+permissions: { actions: write, contents: read }
+jobs:
+  pace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    env: { GH_TOKEN: '${{ github.token }}', R: '${{ github.repository }}' }
+    steps:
+      - name: Start news and agent runs on time
+        run: |
+          last_ok() { gh run list -R "$R" -w "$1" -L 10 --json createdAt,status -q '[.[]|select(.status!="queued")][0].createdAt' 2>/dev/null; }
+          age_min() { t=$(last_ok "$1"); [ -z "$t" ] && echo 9999 || echo $(( ( $(date -u +%s) - $(date -u -d "$t" +%s) ) / 60 )); }
+          busy() { [ -n "$(gh run list -R "$R" -w "$1" -L 3 --json status -q '.[]|select(.status=="in_progress" or .status=="queued")|.status')" ]; }
+          end=$(( $(date -u +%s) + 290*60 ))
+          while [ "$(date -u +%s)" -lt "$end" ]; do
+            h=$(( ( $(date -u +%-H) + 3 ) % 24 ))
+            if [ "$h" -ge 6 ] && [ "$h" -lt 22 ]; then
+              if [ "$(age_min news.yml)" -ge 55 ] && ! busy news.yml && ! busy agent.yml; then gh workflow run news.yml -R "$R" && echo "$(date -u +%H:%M) started news"; fi
+              if [ "$(age_min agent.yml)" -ge 360 ] && ! busy agent.yml; then gh workflow run agent.yml -R "$R" && echo "$(date -u +%H:%M) started agent"; fi
+            fi
+            sleep 600
+          done
+          gh workflow run pacer.yml -R "$R" && echo "next pacer started"
