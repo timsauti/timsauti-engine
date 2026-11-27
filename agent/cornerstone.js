@@ -69,11 +69,13 @@ function card(o) {   // owner, 13 Nov: every Cornerstone poster keeps the house 
   } else {   // a place: wide photo on top with rounded corners, headline below
     parts.push(`<image href="data:image/png;base64,${b64(logo)}" x="${W / 2 - 300}" y="28" width="600" height="132" preserveAspectRatio="xMidYMid meet"/>`);
     const gal = (o.gallery || []).filter((g) => fs.existsSync(g)).slice(0, 3);
-    const HH = gal.length === 3 || o.verse ? 330 : 420;   // with a gallery: a shorter main photo and three small ones below
+    const HH = gal.length === 3 ? 330 : o.verse ? 350 : 420;   // with a gallery: a shorter main photo and three small ones below
     if (photo) parts.push(`<clipPath id="r"><rect x="40" y="170" width="1000" height="${HH}" rx="28"/></clipPath><image href="data:${mime(photo)};base64,${b64(photo)}" x="40" y="170" width="1000" height="${HH}" preserveAspectRatio="${/\/s_/.test(photo) ? 'xMidYMin' : 'xMidYMid'} slice" clip-path="url(#r)"/>`);   // scenes with people keep the top of the photo, so no head is cut
+    if (photo && o.credit) parts.push(`<text x="1022" y="${170 + HH - 14}" text-anchor="end" font-family="Poppins" font-size="14" fill="#ffffff" fill-opacity="0.8">${esc(o.credit)}</text>`);   // the photo's licence asks for a credit
     if (gal.length === 3) gal.forEach((g, i) => { const x = 40 + i * 340; parts.push(`<clipPath id="g${i}"><rect x="${x}" y="${170 + HH + 12}" width="320" height="150" rx="18"/></clipPath><image href="data:${mime(g)};base64,${b64(g)}" x="${x}" y="${170 + HH + 12}" width="320" height="150" preserveAspectRatio="xMidYMid slice" clip-path="url(#g${i})"/>`); });
-    if (o.tag) parts.push(`<rect x="70" y="${(o.gallery || []).length === 3 ? 455 : 545}" width="${44 + o.tag.length * 21}" height="62" rx="14" fill="${C.green}"/><text x="88" y="${(o.gallery || []).length === 3 ? 497 : 587}" font-family="Montserrat" font-weight="800" font-size="30" fill="#fff">${esc(o.tag.toUpperCase())}</text>`);
-    let y = o.verse ? 590 : (o.gallery || []).length === 3 ? 722 : 700; const h = o.headline || [];
+    // the label sits inside the photo's bottom left corner, never on the headline (owner, 27 Nov: it overlapped); Friday carries none
+    if (o.tag && !o.verse) { const ty = 170 + HH - 84, tw = Math.min(900, 44 + o.tag.length * 21); parts.push(`<rect x="70" y="${ty}" width="${tw}" height="62" rx="14" fill="${C.green}"/><text x="88" y="${ty + 42}" font-family="Montserrat" font-weight="800" font-size="30" fill="#fff">${esc(o.tag.toUpperCase())}</text>`); }
+    let y = o.verse ? 610 : (o.gallery || []).length === 3 ? 722 : 700; const h = o.headline || [];
     const ls = [h[0], [h[1], h[2]].filter(Boolean).join(' ')].filter(Boolean).map((t) => t.toUpperCase());   // first part dark, the rest teal
     const gmode = (o.gallery || []).length === 3; ls.forEach((l, i) => { const size = Math.min(gmode ? 52 : 60, Math.floor(980 / Math.max(1, l.length * 0.74))); parts.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-family="Montserrat" font-weight="900" font-size="${size}" fill="${i === 0 ? C.dark : C.teal}">${esc(l)}</text>`); y += size + 8; });
     parts.push(`<rect x="${W / 2 - 75}" y="${y - 22}" width="150" height="5" fill="${C.gold}"/>`); y += 30;
