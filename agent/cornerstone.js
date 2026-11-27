@@ -154,7 +154,7 @@ Return JSON: {"headline":["first line, 1 to 3 words","key word, at most 10 lette
     const vn = (t) => String(t).toLowerCase().replace(/[^a-z ]/g, '').slice(0, 40);
     out.caption = out.caption.split(/\n\s*\n/).filter((pa) => !vn(pa).includes(vn(verse[0]).slice(0, 30)) && !/0720|whatsapp|call us|kithini|kyumbi|admission|our services|inpatient/i.test(pa)).join('\n\n');
     if (/\/hope\//.test(photo)) { try { const ix = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'cornerstone', 'hope', 'index.json'), 'utf8')); const e = Object.values(ix).find((v) => v.file === path.basename(photo)); out.credit = e ? e.credit : ''; } catch (e) {} }
-    out.caption = `"${verse[0]}" ${verse[1]} (WEB)\n\n` + out.caption + '\n\nCornerstone Treatment and Rehabilitation Centre. Mind, Body and Spirit.' + (out.credit ? '\n\n' + out.credit : '');
+    out.caption = `"${verse[0]}" ${verse[1]} (WEB)\n\n` + out.caption + '\n\nCornerstone Treatment and Rehabilitation Centre. Mind, Body and Spirit.';   // the photo credit stays tiny on the poster, never in the caption (owner, 27 Nov)
   }   // the verse is always quoted exactly, at the top
   return out;
 }

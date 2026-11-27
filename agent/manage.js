@@ -30,7 +30,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     // TARGET = our post record id: replaces the live post's text with the record's current caption (for corrections)
     const posts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', PAGE, 'posts.json'), 'utf8')); const p = posts.find((x) => x.id === TARGET);
     const pid = p && p.fb && (p.fb.postId || (p.fb.photoId && page.pageId + '_' + p.fb.photoId)); if (!pid) { console.log('no live post for ' + TARGET); process.exit(1); }
-    const body = new URLSearchParams({ message: p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' ') });
+    const body = new URLSearchParams({ message: p.caption + '\n\n' + (p.hashtags || page.tags.map((h) => '#' + h).join(' ')) });
     const r = await fetch(`https://graph.facebook.com/${GV}/${pid}`, { method: 'POST', headers: auth, body, signal: AbortSignal.timeout(60000) });
     const j = await r.json().catch(() => ({})); console.log('recaption ' + r.status + ' ' + mask(JSON.stringify(j)).slice(0, 200));
     audit({ event: 'recaptioned_by_owner_request', id: TARGET, ok: r.ok }); process.exit(r.ok ? 0 : 1);
@@ -157,7 +157,7 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     // a prepared owner post already booked on Facebook: move it to its new bookAt time and refresh its text
     const file = path.join(ROOT, 'data', PAGE, 'posts.json'); const posts = JSON.parse(fs.readFileSync(file, 'utf8'));
     const p = posts.find((x) => x.id === String(TARGET).trim()); if (!p || !p.fbScheduledId) { console.log('No booked post'); process.exit(1); }
-    const fd = new URLSearchParams({ message: p.caption + '\n\n' + page.tags.map((h) => '#' + h).join(' '), scheduled_publish_time: String(Math.floor(Date.parse(p.bookAt) / 1000)) });
+    const fd = new URLSearchParams({ message: p.caption + '\n\n' + (p.hashtags || page.tags.map((h) => '#' + h).join(' ')), scheduled_publish_time: String(Math.floor(Date.parse(p.bookAt) / 1000)) });
     const r = await fetch(`https://graph.facebook.com/${GV}/${p.fbScheduledId}`, { method: 'POST', headers: auth, body: fd, signal: AbortSignal.timeout(60000) });
     const j = await r.json().catch(() => ({}));
     audit({ event: 'reschedule', id: p.id, ok: r.ok, at: p.bookAt, error: r.ok ? null : mask(JSON.stringify(j)).slice(0, 300) });
