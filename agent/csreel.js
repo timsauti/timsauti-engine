@@ -30,10 +30,12 @@ async function write(history, gemini, clean, facts) {
   const photo = ph.find((f) => !seen.includes(path.basename(f))) || ph[used.length % ph.length];
   const d = await gemini({ system: 'You write short social media video scripts for a rehabilitation centre in Kenya. You only use the facts given. Output only JSON.', user: `Facts about the client:\n${facts}\n\nWrite a Facebook Reel on: ${topic}.
 It is light, warm and useful, the kind of thing people save and send to a friend. Accurate general knowledge only; no invented statistics, names, prices or claims of cure. No stigma words such as addict or junkie; say person living with addiction or person in recovery. English only. No dashes, no emojis, never the words "testament" or "whether". Never ask readers to comment, like, share or tag.
-Return JSON: {"title":"the reel title in at most 8 words","points":[{"h":"point heading, 2 to 4 words","t":"one plain sentence, at most 14 words"} x5],"caption":"the Facebook caption: a title line in CAPITALS, one short opening line, the 5 points written as 1. 2. 3. 4. 5. each one short line, one line on how Cornerstone helps, then one natural question to the reader on its own line, then the line Call or WhatsApp 0720 825 938; 90 to 170 words","hashtags":"5 to 7 hashtags including #CornerstoneRehab #Machakos"}` });
+Return JSON: {"title":"the reel title in at most 8 words","points":[{"h":"point heading, 2 to 4 words","t":"one plain sentence, at most 14 words"} x5],"opening":"one or two warm opening sentences for the caption","help":"one sentence on how Cornerstone helps, using only the facts","question":"one natural, specific question to the reader (not asking them to comment, like or share)","hashtags":"5 to 7 hashtags including #CornerstoneRehab #Machakos"}` });
   const pts = (d.points || []).slice(0, 5).map((p) => ({ h: clean(p.h || ''), t: clean(p.t || '') })).filter((p) => p.h && p.t);
-  if (pts.length < 5 || !d.title || String(d.caption || '').length < 200) throw new Error('weak reel draft');
-  return { kind: 'REEL', topic, title: clean(d.title), points: pts, caption: clean(d.caption), hashtags: String(d.hashtags || '').replace(/[^#\w\s]/g, '').trim(), photo };
+  if (pts.length < 5 || !d.title || !d.opening) throw new Error('weak reel draft');
+  // the caption is built here so every point carries its sentence (owner, 27 Nov: a list of bare headings is too thin)
+  const caption = [clean(d.title).toUpperCase(), clean(d.opening), pts.map((p, i) => `${i + 1}. ${p.h.toUpperCase()}\n${p.t}`).join('\n\n'), clean(d.help || ''), clean(d.question || ''), 'Call or WhatsApp 0720 825 938'].filter(Boolean).join('\n\n');
+  return { kind: 'REEL', topic, title: clean(d.title), points: pts, caption, hashtags: String(d.hashtags || '').replace(/[^#\w\s]/g, '').trim(), photo };
 }
 
 // one 1080 x 1920 slide: the photo on top melting into deep teal, the logo, the words below
