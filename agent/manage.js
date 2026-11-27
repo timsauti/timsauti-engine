@@ -197,6 +197,24 @@ const audit = (o) => fs.appendFileSync(path.join(ROOT, 'data', PAGE, 'audit.json
     process.env.SELFTEST = '1'; const R = require('./run'); const page = R.PAGES.find((p) => p.key === 'makasa'); const posts = R.load('makasa'); const out = [];
     for (let i = 0; i < (Number(TARGET) || 2); i++) { const p = await R.write(page, posts.concat(out), Date.now() + 86400000, 'W'); out.push(p); }
     fs.writeFileSync(path.join(ROOT, 'data', 'makasa', 'wit_test.json'), JSON.stringify(out.map((p) => ({ status: p.status, wit: p.wit, caption: p.caption, image: p.image && p.image.file })), null, 1)); console.log('ok');
+  } else if (ACTION === 'csreel') {
+    // TARGET = make: writes a Cornerstone Reel draft now (the owner sees it before anything goes out); TARGET = a draft id: publishes that Reel now
+    const DIR = path.join(ROOT, 'data', 'cornerstone'); const FILE = path.join(DIR, 'posts.json'); const ps = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    if (String(TARGET).trim() === 'make') {
+      process.env.SELFTEST = '1'; const R = require('./run'); const CS = require('./cornerstone'); const RL = require('./csreel');
+      const clean = (x) => String(x || '').replace(/[\u2013\u2014]/g, ',').replace(/\s+,/g, ',').trim();
+      const d = await RL.write(ps, R.gemini, clean, CS.FACTS); const id = 'cs_' + Date.now().toString(36); const v = RL.render(d, path.join(DIR, 'reels'), id);
+      const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+      ps.push(Object.assign({ id, day, status: 'DRAFT', sentAt: new Date().toISOString(), createdAt: new Date().toISOString(), image: path.relative(ROOT, v.cover), video: path.relative(ROOT, v.mp4) }, d, { photo: path.relative(ROOT, d.photo) }));
+      fs.writeFileSync(FILE, JSON.stringify(ps, null, 1)); audit({ event: 'reel_draft_by_owner_request', id }); console.log('reel draft ' + id);
+    } else {
+      const p = ps.find((x) => x.id === String(TARGET).trim() && x.kind === 'REEL'); if (!p) { console.log('No such Reel'); process.exit(1); }
+      if (p.status === 'PUBLISHED') { console.log('Already published: ' + p.permalink); return; }
+      const r = await require('./extras').publishReel(page, path.join(ROOT, p.video), p.caption + '\n\n' + p.hashtags);
+      p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { kind: 'reel', videoId: r.videoId, postId: r.postId }; p.permalink = r.permalink;
+      try { fs.unlinkSync(path.join(ROOT, p.video)); } catch (e) {}
+      fs.writeFileSync(FILE, JSON.stringify(ps, null, 1)); audit({ event: 'reel_published_by_owner_request', id: p.id, fb: p.fb }); console.log('reel ' + r.permalink);
+    }
   } else if (ACTION === 'cstest') {
     // TARGET = MON, WED or FRI: writes one Cornerstone draft and its poster without sending or posting anything
     process.env.SELFTEST = '1'; const R = require('./run'); const CS = require('./cornerstone');

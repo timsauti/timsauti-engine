@@ -164,18 +164,22 @@ const DIR = path.join(ROOT, 'data', 'cornerstone'); const FILE = path.join(DIR, 
 const load = () => { try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (e) { return []; } };
 const save = (ps) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(ps, null, 1)); };
 const audit = (o) => { fs.mkdirSync(DIR, { recursive: true }); fs.appendFileSync(path.join(DIR, 'audit.jsonl'), JSON.stringify(Object.assign({ ts: new Date().toISOString() }, o)) + '\n'); };
-const KIND = { 1: 'MON', 3: 'WED', 5: 'FRI' };
-const NAME = { MON: 'Monday business post', WED: 'Wednesday education post', FRI: 'Friday motivation post' };
+const KIND = { 1: 'MON', 2: 'REEL', 3: 'WED', 4: 'REEL', 5: 'FRI', 6: 'REEL' };   // Reels on the days without an official post (owner, 27 Nov)
+const NAME = { MON: 'Monday business post', WED: 'Wednesday education post', FRI: 'Friday motivation post', REEL: 'Reel (short video, goes out from 1pm)' };
 // called on every agent run: writes the day's draft from 5am, sends it for approval, posts approved drafts at 10am (or at once if later)
 async function daily({ tg, gemini, clean, token, mask, GV }) {
   const now = new Date(Date.now() + 3 * 3600000); const day = now.toISOString().slice(0, 10); const hour = now.getUTCHours(); const kind = KIND[now.getUTCDay()];
   const ps = load();
   if (kind && hour >= 5 && hour < 20 && !ps.some((p) => p.day === day && p.status !== 'SUPERSEDED')) {
+    const id = 'cs_' + Date.now().toString(36); let post;
+    if (kind === 'REEL') { const RL = require('./csreel'); const d = await RL.write(ps, gemini, clean, FACTS); const v = RL.render(d, path.join(DIR, 'reels'), id);
+      post = Object.assign({ id, day, status: 'DRAFT', createdAt: new Date().toISOString(), image: path.relative(ROOT, v.cover), video: path.relative(ROOT, v.mp4) }, d, { photo: path.relative(ROOT, d.photo) });
+    } else {
     const d = await write(kind, ps, gemini, clean);
-    const id = 'cs_' + Date.now().toString(36);
     fs.mkdirSync(path.join(DIR, 'images'), { recursive: true }); const img = path.join(DIR, 'images', id + '.png');
     fs.writeFileSync(img, card(d));
-    const post = Object.assign({ id, day, status: 'DRAFT', createdAt: new Date().toISOString(), image: path.relative(ROOT, img) }, d, { photo: path.relative(ROOT, d.photo), gallery: d.gallery ? d.gallery.map((g) => path.relative(ROOT, g)) : null });
+    post = Object.assign({ id, day, status: 'DRAFT', createdAt: new Date().toISOString(), image: path.relative(ROOT, img) }, d, { photo: path.relative(ROOT, d.photo), gallery: d.gallery ? d.gallery.map((g) => path.relative(ROOT, g)) : null });
+    }
     ps.push(post); save(ps); audit({ event: 'draft_written', id, kind, topic: d.topic });
   }
   for (const p of ps.filter((x) => x.status === 'DRAFT' && !x.sentAt)) {
@@ -186,6 +190,15 @@ async function daily({ tg, gemini, clean, token, mask, GV }) {
   }
   for (const p of ps.filter((x) => x.status === 'APPROVED')) {
     if (!token) { audit({ event: 'no_token' }); break; }
+    if (p.kind === 'REEL') {   // a Reel goes out from 1pm on its day (or at once if the owner asked), then the video file is removed to keep the store small
+      if (!p.now && Date.now() < Date.parse(p.day + 'T10:00:00Z')) continue;
+      try { const r = await require('./extras').publishReel({ pageId: '104576991675007', token }, path.join(ROOT, p.video), p.caption + '\n\n' + p.hashtags);
+        p.status = 'PUBLISHED'; p.publishedAt = new Date().toISOString(); p.fb = { kind: 'reel', videoId: r.videoId, postId: r.postId }; p.permalink = r.permalink; save(ps); audit({ event: 'reel_published', id: p.id, fb: p.fb });
+        try { fs.unlinkSync(path.join(ROOT, p.video)); } catch (e) {}
+        await tg.send('CORNERSTONE Reel posted on Facebook: ' + r.permalink);
+      } catch (e) { p.status = 'FAILED'; p.error = mask(e.message).slice(0, 200); save(ps); audit({ event: 'reel_failed', id: p.id, error: p.error }); await tg.send('Cornerstone Reel could not go out: ' + p.error); }
+      continue;
+    }
     const ten = Date.parse(p.day + 'T07:00:00Z');   // 10am Nairobi time
     const when = !p.now && ten - Date.now() > 12 * 60000 ? ten : null;   // p.now: the owner asked for it to go out at once (11 Nov)
     const fd = new FormData();
