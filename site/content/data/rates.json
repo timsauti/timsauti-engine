@@ -1,10 +1,10 @@
 {
- "date": "2026-11-26",
- "usd": 130.07,
- "eur": 142.61,
- "gbp": 170.39,
- "ugx": 32.04,
- "tzs": 20.53,
+ "date": "2026-11-27",
+ "usd": 130.1,
+ "eur": 142.76,
+ "gbp": 170.51,
+ "ugx": 32.51,
+ "tzs": 20.62,
  "source": "ExchangeRate-API market rates",
  "url": "https://www.exchangerate-api.com"
 }
